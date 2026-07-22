@@ -24,6 +24,7 @@ import PersonFormModal from '../components/PersonFormModal';
 const nodeTypes = { personNode: PersonNode, coupleNode: CoupleNode };
 
 const SPOUSE_GAP = 180;
+const CHILD_GAP = 220;
 const GENERATION_GAP = 160;
 
 function buildManualLayout(nodes: Node[], edges: Edge[]): Node[] {
@@ -75,10 +76,10 @@ function buildManualLayout(nodes: Node[], edges: Edge[]): Node[] {
 
   for (const [lvl, ids] of byLevel) {
     const y = lvl * GENERATION_GAP;
-    const totalWidth = ids.length * SPOUSE_GAP;
-    const startX = -totalWidth / 2 + SPOUSE_GAP / 2;
+    const totalWidth = ids.length * CHILD_GAP;
+    const startX = -totalWidth / 2 + CHILD_GAP / 2;
     ids.forEach((id, i) => {
-      positioned.set(id, { x: startX + i * SPOUSE_GAP, y });
+      positioned.set(id, { x: startX + i * CHILD_GAP, y });
     });
     maxY = y;
   }
@@ -297,6 +298,19 @@ export default function TreeEditorPage() {
     setFormModal({ mode: 'addRelation', relationType: type, targetNodeId });
   };
 
+  // Resolve a node ID (may be couple-0 etc) to a real person ID
+  const resolvePersonId = (nodeId: string): number => {
+    if (nodeId.startsWith('couple-')) {
+      // Find the couple node and use the first person's ID
+      const coupleNode = nodes.find((n) => n.id === nodeId);
+      if (coupleNode) {
+        const d = coupleNode.data as any;
+        return Number(d.person1?.id || d.person2?.id);
+      }
+    }
+    return Number(nodeId);
+  };
+
   const handleFormConfirm = async () => {
     if (!formModal || !formName.trim()) return;
     const mode = formModal.mode;
@@ -309,25 +323,25 @@ export default function TreeEditorPage() {
       if (mode === 'addRelation' && formModal.targetNodeId && formModal.relationType) {
         const type = formModal.relationType;
         const targetNodeId = formModal.targetNodeId;
+        const targetPersonId = resolvePersonId(targetNodeId);
 
-        let fromId = Number(targetNodeId);
+        let fromId = targetPersonId;
         let toId = newPerson.id;
         let relType = type;
 
         if (type === 'parent') {
           fromId = newPerson.id;
-          toId = Number(targetNodeId);
+          toId = targetPersonId;
           relType = 'parent';
         } else if (type === 'sibling') {
-          // Find parent of the target node (check both relationship directions)
           const parentEdge = edges.find(
             (e) => (e.target === targetNodeId && e.label === 'parent') ||
                    (e.source === targetNodeId && e.label === 'child')
           );
           if (parentEdge) {
-            const parentId = parentEdge.label === 'parent'
-              ? Number(parentEdge.source)
-              : Number(parentEdge.target);
+            const parentId = resolvePersonId(
+              parentEdge.label === 'parent' ? parentEdge.source : parentEdge.target
+            );
             fromId = newPerson.id;
             toId = parentId;
             relType = 'child';
@@ -341,7 +355,7 @@ export default function TreeEditorPage() {
           relType = 'spouse';
         } else if (type === 'child') {
           fromId = newPerson.id;
-          toId = Number(targetNodeId);
+          toId = targetPersonId;
           relType = 'child';
         }
 
