@@ -33,22 +33,11 @@ function buildManualLayout(nodes: Node[], edges: Edge[]): Node[] {
   const parents = new Map<string, string[]>();
 
   for (const e of hierarchyEdges) {
-    // Determine parent and child based on relationship type
-    let parentId: string;
-    let childId: string;
-    if (e.label === 'parent') {
-      parentId = e.source;
-      childId = e.target;
-    } else {
-      // 'child' type: source is child, target is parent
-      parentId = e.target;
-      childId = e.source;
-    }
-
-    if (!adjacency.has(parentId)) adjacency.set(parentId, []);
-    adjacency.get(parentId)!.push(childId);
-    if (!parents.has(childId)) parents.set(childId, []);
-    parents.get(childId)!.push(parentId);
+    // All edges now have source=parent, target=child (flipped for 'child' type)
+    if (!adjacency.has(e.source)) adjacency.set(e.source, []);
+    adjacency.get(e.source)!.push(e.target);
+    if (!parents.has(e.target)) parents.set(e.target, []);
+    parents.get(e.target)!.push(e.source);
   }
 
   const level = new Map<string, number>();
@@ -163,16 +152,20 @@ export default function TreeEditorPage() {
         },
       }));
 
-      const rfEdges: Edge[] = graph.edges.map((e: any) => ({
-        id: String(e.id),
-        source: String(e.from),
-        target: String(e.to),
-        type: 'smoothstep',
-        animated: true,
-        style: { stroke: '#6b7280', strokeWidth: 2 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#6b7280' },
-        label: e.type,
-      }));
+      const rfEdges: Edge[] = graph.edges.map((e: any) => {
+        // Flip edge direction for 'child' type so arrow always points parent→child
+        const isChildType = e.type === 'child';
+        return {
+          id: String(e.id),
+          source: isChildType ? String(e.to) : String(e.from),
+          target: isChildType ? String(e.from) : String(e.to),
+          type: 'smoothstep',
+          animated: true,
+          style: { stroke: '#6b7280', strokeWidth: 2 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#6b7280' },
+          label: e.type,
+        };
+      });
 
       const laidOut = buildManualLayout(rfNodes, rfEdges);
       setNodes(laidOut);
