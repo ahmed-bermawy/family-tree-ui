@@ -17,10 +17,11 @@ import '@xyflow/react/dist/style.css';
 import { trees, persons, relationships } from '../api/endpoints';
 import { useAuth } from '../context/AuthContext';
 import PersonNode from '../components/PersonNode';
+import CoupleNode from '../components/CoupleNode';
 import NodeContextMenu from '../components/NodeContextMenu';
 import PersonFormModal from '../components/PersonFormModal';
 
-const nodeTypes = { personNode: PersonNode };
+const nodeTypes = { personNode: PersonNode, coupleNode: CoupleNode };
 
 const SPOUSE_GAP = 180;
 const GENERATION_GAP = 160;
@@ -119,6 +120,7 @@ export default function TreeEditorPage() {
   const [loading, setLoading] = useState(true);
   const [contextMenu, setContextMenu] = useState<{
     nodeId: string;
+    nodeType?: string;
     x: number;
     y: number;
   } | null>(null);
@@ -141,31 +143,86 @@ export default function TreeEditorPage() {
       setTreeName(tree.name);
       const graph = await trees.graph(treeId);
 
-      const rfNodes: Node[] = graph.nodes.map((p: any) => ({
-        id: String(p.id),
-        type: 'personNode',
-        position: { x: 0, y: 0 },
-        data: {
-          name: p.name,
-          gender: p.gender,
-          onClick: () => {},
-        },
-      }));
+      // Find spouse pairs and build couple mapping
+      const spouseEdges = graph.edges.filter((e: any) => e.type === 'spouse');
+      const coupled = new Set<number>(); // persons already in a couple node
+      const coupleMap = new Map<string, { id: string; p1: any; p2: any }>(); // personId -> couple group
 
-      const rfEdges: Edge[] = graph.edges.map((e: any) => {
-        // Flip edge direction for 'child' type so arrow always points parent→child
-        const isChildType = e.type === 'child';
-        return {
-          id: String(e.id),
-          source: isChildType ? String(e.to) : String(e.from),
-          target: isChildType ? String(e.from) : String(e.to),
-          type: 'smoothstep',
-          animated: true,
-          style: { stroke: '#6b7280', strokeWidth: 2 },
-          markerEnd: { type: MarkerType.ArrowClosed, color: '#6b7280' },
-          label: e.type,
-        };
+      spouseEdges.forEach((se: any, idx: number) => {
+        const p1 = graph.nodes.find((n: any) => n.id === se.from);
+        const p2 = graph.nodes.find((n: any) => n.id === se.to);
+        if (!p1 || !p2) return;
+        const coupleId = `couple-${idx}`;
+        coupleMap.set(String(se.from), { id: coupleId, p1, p2 });
+        coupleMap.set(String(se.to), { id: coupleId, p1, p2 });
+        coupled.add(se.from);
+        coupled.add(se.to);
       });
+
+      // Create nodes
+      const rfNodes: Node[] = [];
+      const addedCouples = new Set<string>();
+
+      graph.edges.forEach((e: any) => {
+        if (e.type === 'spouse') return;
+        // Remap source/target to couple ID if the person is in a couple
+        const sourceCouple = coupleMap.get(String(e.from));
+        const targetCouple = coupleMap.get(String(e.to));
+        const mappedSource = sourceCouple ? sourceCouple.id : String(e.from);
+        const mappedTarget = targetCouple ? targetCouple.id : String(e.to);
+        // Store remapping info
+        e._mappedSource = mappedSource;
+        e._mappedTarget = mappedTarget;
+      });
+
+      // Create couple nodes
+      graph.nodes.forEach((p: any) => {
+        if (coupled.has(p.id)) {
+          const couple = coupleMap.get(String(p.id));
+          if (couple && !addedCouples.has(couple.id)) {
+            addedCouples.add(couple.id);
+            rfNodes.push({
+              id: couple.id,
+              type: 'coupleNode',
+              position: { x: 0, y: 0 },
+              data: {
+                person1: { id: String(couple.p1.id), name: couple.p1.name, gender: couple.p1.gender || '' },
+                person2: { id: String(couple.p2.id), name: couple.p2.name, gender: couple.p2.gender || '' },
+                onClick: () => {},
+              },
+            });
+          }
+        } else {
+          // Single person node
+          rfNodes.push({
+            id: String(p.id),
+            type: 'personNode',
+            position: { x: 0, y: 0 },
+            data: {
+              name: p.name,
+              gender: p.gender,
+              onClick: () => {},
+            },
+          });
+        }
+      });
+
+      // Create edges
+      const rfEdges: Edge[] = graph.edges
+        .filter((e: any) => e.type !== 'spouse')
+        .map((e: any) => {
+          const isChildType = e.type === 'child';
+          return {
+            id: String(e.id),
+            source: isChildType ? e._mappedTarget : e._mappedSource,
+            target: isChildType ? e._mappedSource : e._mappedTarget,
+            type: 'smoothstep',
+            animated: true,
+            style: { stroke: '#6b7280', strokeWidth: 2 },
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#6b7280' },
+            label: e.type,
+          };
+        });
 
       const laidOut = buildManualLayout(rfNodes, rfEdges);
       setNodes(laidOut);
@@ -210,13 +267,14 @@ export default function TreeEditorPage() {
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
       const bounds = reactFlowWrapper.current?.getBoundingClientRect();
-      if (bounds) {
-        setContextMenu({
-          nodeId: node.id,
-          x: _.clientX || bounds.left + 100,
-          y: _.clientY || bounds.top + 100,
-        });
-      }
+      if (!bounds) return;
+      // For couple nodes, store the couple info so context menu knows
+      setContextMenu({
+        nodeId: node.id,
+        nodeType: node.type || 'personNode',
+        x: _.clientX || bounds.left + 100,
+        y: _.clientY || bounds.top + 100,
+      });
     },
     [],
   );
