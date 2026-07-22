@@ -21,6 +21,8 @@ import CoupleNode from '../components/CoupleNode';
 import NodeContextMenu from '../components/NodeContextMenu';
 import PersonFormModal from '../components/PersonFormModal';
 import ShareModal from '../components/ShareModal';
+import ConfirmModal from '../components/ConfirmModal';
+import Toast from '../components/Toast';
 import { toPng } from 'html-to-image';
 import { useI18n } from '../i18n/I18nContext';
 
@@ -178,6 +180,12 @@ export default function TreeEditorPage() {
   const [formGender, setFormGender] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
 
+  // Confirm and toast state
+  const [confirmAction, setConfirmAction] = useState<{
+    title: string; message: string; danger?: boolean; onConfirm: () => void;
+  } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type?: 'error' | 'success' | 'info' } | null>(null);
+
   const loadGraph = useCallback(async () => {
     try {
       const tree = await trees.get(treeId);
@@ -282,15 +290,22 @@ export default function TreeEditorPage() {
 
   const deletePerson = useCallback(
     async (nodeId: string) => {
-      if (!confirm(t.deletePersonConfirm)) return;
-      try {
-        await persons.delete(Number(nodeId));
-        loadGraph();
-      } catch (err: any) {
-        alert(err.response?.data?.message || 'Failed to delete');
-      }
+      setConfirmAction({
+        title: '🗑️ ' + (t.deletePersonConfirm?.split('?')[0] || ''),
+        message: t.deletePersonConfirm,
+        danger: true,
+        onConfirm: async () => {
+          setConfirmAction(null);
+          try {
+            await persons.delete(Number(nodeId));
+            loadGraph();
+          } catch (err: any) {
+            setToast({ message: err.response?.data?.message || t.failed });
+          }
+        },
+      });
     },
-    [loadGraph],
+    [loadGraph, t],
   );
 
   const renamePerson = useCallback(
@@ -300,10 +315,10 @@ export default function TreeEditorPage() {
         setEditingNode(null);
         loadGraph();
       } catch (err: any) {
-        alert(err.response?.data?.message || 'Failed to rename');
+        setToast({ message: err.response?.data?.message || t.failed });
       }
     },
-    [loadGraph],
+    [loadGraph, t],
   );
 
   const onNodeClick = useCallback(
@@ -381,7 +396,7 @@ export default function TreeEditorPage() {
             toId = parentId;
             relType = 'child';
           } else {
-            alert(t.noParentFound);
+            setToast({ message: t.noParentFound });
             await persons.delete(newPerson.id);
             setFormModal(null);
             return;
@@ -400,7 +415,7 @@ export default function TreeEditorPage() {
       setFormModal(null);
       loadGraph();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed');
+      setToast({ message: err.response?.data?.message || t.failed });
     }
   };
 
@@ -423,8 +438,8 @@ export default function TreeEditorPage() {
       link.download = `${treeName || 'family-tree'}.png`;
       link.href = dataUrl;
       link.click();
-    } catch (err) {
-      alert(t.printFailed);
+    } catch {
+      setToast({ message: t.printFailed });
     }
   };
 
@@ -604,6 +619,28 @@ export default function TreeEditorPage() {
           url={`${window.location.origin}/share/${shareCode}`}
           treeName={treeName}
           onClose={() => setShowShareModal(false)}
+        />
+      )}
+
+      {/* Confirm Modal */}
+      {confirmAction && (
+        <ConfirmModal
+          title={confirmAction.title}
+          message={confirmAction.message}
+          danger={confirmAction.danger}
+          confirmLabel="Delete"
+          cancelLabel={t.cancel}
+          onConfirm={confirmAction.onConfirm}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type || 'error'}
+          onClose={() => setToast(null)}
         />
       )}
     </div>

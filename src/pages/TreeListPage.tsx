@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { trees } from '../api/endpoints';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n/I18nContext';
+import ConfirmModal from '../components/ConfirmModal';
 
 interface Tree {
   id: number;
@@ -14,6 +15,7 @@ export default function TreeListPage() {
   const [treeList, setTreeList] = useState<Tree[]>([]);
   const [newName, setNewName] = useState('');
   const [nameError, setNameError] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const { user, logout } = useAuth();
   const { t, toggleLang } = useI18n();
   const navigate = useNavigate();
@@ -38,9 +40,14 @@ export default function TreeListPage() {
     navigate(`/trees/${tree.id}`);
   };
 
-  const deleteTree = async (id: number) => {
-    if (!confirm(t.deleteTreeConfirm)) return;
-    await trees.delete(id);
+  const deleteTree = (id: number) => {
+    setDeleteTarget(id);
+  };
+
+  const confirmDeleteTree = async () => {
+    if (deleteTarget === null) return;
+    await trees.delete(deleteTarget);
+    setDeleteTarget(null);
     loadTrees();
   };
 
@@ -132,6 +139,19 @@ export default function TreeListPage() {
           )}
         </div>
       </main>
+
+      {/* Delete Confirm Modal */}
+      {deleteTarget !== null && (
+        <ConfirmModal
+          title="🗑️ Delete Tree"
+          message={t.deleteTreeConfirm}
+          danger
+          confirmLabel="Delete"
+          cancelLabel={t.cancel}
+          onConfirm={confirmDeleteTree}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
     </div>
   );
 }
