@@ -154,6 +154,7 @@ export default function TreeEditorPage() {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [treeName, setTreeName] = useState('');
+  const [shareCode, setShareCode] = useState('');
   const [loading, setLoading] = useState(true);
   const [contextMenu, setContextMenu] = useState<{
     nodeId: string;
@@ -179,6 +180,7 @@ export default function TreeEditorPage() {
     try {
       const tree = await trees.get(treeId);
       setTreeName(tree.name);
+      setShareCode(tree.shareCode || '');
       const graph = await trees.graph(treeId);
 
       // Find spouse pairs and build couple mapping
@@ -598,9 +600,9 @@ export default function TreeEditorPage() {
       )}
 
       {/* Share Modal */}
-      {showShareModal && (
+      {showShareModal && shareCode && (
         <ShareModal
-          url={`${window.location.origin}/share/${treeId}`}
+          url={`${window.location.origin}/share/${shareCode}`}
           treeName={treeName}
           onClose={() => setShowShareModal(false)}
         />
