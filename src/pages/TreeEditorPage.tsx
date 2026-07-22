@@ -20,6 +20,7 @@ import PersonNode from '../components/PersonNode';
 import CoupleNode from '../components/CoupleNode';
 import NodeContextMenu from '../components/NodeContextMenu';
 import PersonFormModal from '../components/PersonFormModal';
+import { toPng } from 'html-to-image';
 
 const nodeTypes = { personNode: PersonNode, coupleNode: CoupleNode };
 
@@ -34,8 +35,8 @@ const MIN_GAP = 40; // min px between node edges
 const GENERATION_GAP = 160;
 
 function buildManualLayout(nodes: Node[], edges: Edge[]): Node[] {
-  const spouseEdges = edges.filter((e) => e.label === 'spouse');
-  const hierarchyEdges = edges.filter((e) => e.label !== 'spouse');
+  const spouseEdges = edges.filter((e) => e.data?.type === 'spouse');
+  const hierarchyEdges = edges.filter((e) => e.data?.type !== 'spouse');
 
   // Build parent → children adjacency
   const children = new Map<string, string[]>();
@@ -255,7 +256,7 @@ export default function TreeEditorPage() {
             animated: true,
             style: { stroke: '#6b7280', strokeWidth: 2 },
             markerEnd: { type: MarkerType.ArrowClosed, color: '#6b7280' },
-            label: e.type,
+            data: { type: e.type },
           };
         });
 
@@ -412,6 +413,31 @@ export default function TreeEditorPage() {
 
   const isEmpty = !loading && nodes.length === 0;
 
+  const handlePrint = async () => {
+    const el = reactFlowWrapper.current?.querySelector('.react-flow__viewport') as HTMLElement;
+    if (!el) return;
+    try {
+      const dataUrl = await toPng(el, { backgroundColor: '#111827', pixelRatio: 2 });
+      const win = window.open('', '_blank');
+      if (win) {
+        win.document.write(`
+          <html><head><title>${treeName}</title>
+          <style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#111827}img{max-width:100%;height:auto}</style>
+          </head><body><img src="${dataUrl}" onload="window.print();window.close()" /></body></html>
+        `);
+        win.document.close();
+      }
+    } catch {}
+  };
+
+  const getShareUrl = () => `${window.location.origin}/share/${treeId}`;
+
+  const handleCopyShareLink = () => {
+    navigator.clipboard.writeText(getShareUrl()).then(() => {
+      alert('Share link copied to clipboard!');
+    });
+  };
+
   return (
     <div className="h-screen bg-gray-900 flex flex-col">
       {/* Navbar */}
@@ -425,8 +451,20 @@ export default function TreeEditorPage() {
           </button>
           <h1 className="text-lg font-semibold text-white">{treeName || 'Loading...'}</h1>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-gray-500 text-xs">{user?.email}</span>
+        <div className="flex items-center gap-2">
+          {!isEmpty && (
+            <>
+              <button onClick={handlePrint}
+                className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition">
+                🖨️ Print
+              </button>
+              <button onClick={handleCopyShareLink}
+                className="px-3 py-1 text-xs bg-emerald-700 hover:bg-emerald-600 text-emerald-200 rounded-lg transition">
+                🔗 Share
+              </button>
+            </>
+          )}
+          <span className="text-gray-500 text-xs ml-2">{user?.email}</span>
           <button onClick={logout} className="text-xs text-gray-500 hover:text-red-400 transition">
             Logout
           </button>

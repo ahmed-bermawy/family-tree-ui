@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import TreeListPage from './pages/TreeListPage';
 import TreeEditorPage from './pages/TreeEditorPage';
+import ShareViewPage from './pages/ShareViewPage';
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ export default function App() {
               }
             />
             <Route path="/" element={<Navigate to="/trees" replace />} />
+            <Route path="/share/:id" element={<ShareViewPage />} />
             <Route path="*" element={<Navigate to="/trees" replace />} />
           </Routes>
         </AuthProvider>

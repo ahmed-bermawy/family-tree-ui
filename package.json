@@ -16,6 +16,7 @@
     "@xyflow/react": "^12.11.2",
     "axios": "^1.18.1",
     "dagre": "^0.8.5",
+    "html-to-image": "^1.11.13",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.1",
