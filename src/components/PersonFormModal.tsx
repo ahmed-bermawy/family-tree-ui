@@ -20,7 +20,7 @@ export default function PersonFormModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div
-        className="bg-gray-800 border border-gray-700 rounded-2xl p-6 w-96 shadow-2xl animate-in"
+        className="bg-gray-800 border border-gray-700 rounded-2xl p-5 sm:p-6 w-[90vw] sm:w-96 shadow-2xl animate-in"
         style={{ animation: 'fadeIn 0.2s ease-out' }}
       >
         <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>

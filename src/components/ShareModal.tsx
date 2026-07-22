@@ -27,7 +27,7 @@ export default function ShareModal({ url, treeName, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-gray-800 border border-gray-700 rounded-2xl p-7 w-[420px] shadow-2xl"
+        className="bg-gray-800 border border-gray-700 rounded-2xl p-5 sm:p-7 w-[90vw] sm:w-[420px] max-h-[90vh] overflow-y-auto shadow-2xl"
         style={{ animation: 'fadeIn 0.2s ease-out' }}
         onClick={(e) => e.stopPropagation()}
       >

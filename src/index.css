@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+/* All buttons get pointer cursor */
+button, a, [role="button"], label, input[type="checkbox"], input[type="radio"], select {
+  cursor: pointer;
+}
+/* No pointer for disabled buttons */
+button:disabled, [role="button"]:disabled {
+  cursor: not-allowed;
+}

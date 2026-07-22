@@ -282,7 +282,7 @@ export default function TreeEditorPage() {
 
   const deletePerson = useCallback(
     async (nodeId: string) => {
-      if (!confirm(t.deleteConfirm)) return;
+      if (!confirm(t.deletePersonConfirm)) return;
       try {
         await persons.delete(Number(nodeId));
         loadGraph();
@@ -308,14 +308,11 @@ export default function TreeEditorPage() {
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
-      const bounds = reactFlowWrapper.current?.getBoundingClientRect();
-      if (!bounds) return;
-      // For couple nodes, store the couple info so context menu knows
       setContextMenu({
         nodeId: node.id,
         nodeType: node.type || 'personNode',
-        x: _.clientX || bounds.left + 100,
-        y: _.clientY || bounds.top + 100,
+        x: Math.min(_.clientX, window.innerWidth - 180),
+        y: Math.min(_.clientY, window.innerHeight - 280),
       });
     },
     [],
@@ -438,34 +435,34 @@ export default function TreeEditorPage() {
   return (
     <div className="h-screen bg-gray-900 flex flex-col">
       {/* Navbar */}
-      <nav className="border-b border-gray-800 bg-gray-900/90 backdrop-blur-sm px-4 py-2 flex items-center justify-between z-10">
-        <div className="flex items-center gap-4">
+      <nav className="border-b border-gray-800 bg-gray-900/90 backdrop-blur-sm px-2 sm:px-4 py-2 flex items-center justify-between z-10 gap-1">
+        <div className="flex items-center gap-1 sm:gap-4 min-w-0">
           <button
             onClick={() => navigate('/trees')}
-            className="text-gray-400 hover:text-white transition text-sm"
+            className="text-gray-400 hover:text-white transition text-xs sm:text-sm whitespace-nowrap"
           >
             {t.back}
           </button>
-          <h1 className="text-lg font-semibold text-white">{treeName || t.loading}</h1>
+          <h1 className="text-sm sm:text-lg font-semibold text-white truncate max-w-[120px] sm:max-w-none">{treeName || t.loading}</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           {!isEmpty && (
             <>
-              <button onClick={toggleLang} className="text-xs text-gray-500 hover:text-emerald-400 transition px-2">
+              <button onClick={toggleLang} className="text-[10px] sm:text-xs text-gray-500 hover:text-emerald-400 transition px-1 sm:px-2 whitespace-nowrap">
                 {t.langSwitch}
               </button>
               <button onClick={handlePrint}
-                className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition">
+                className="px-1.5 sm:px-3 py-1 text-[10px] sm:text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition whitespace-nowrap">
                 {t.print}
               </button>
               <button onClick={handleCopyShareLink}
-                className="px-3 py-1 text-xs bg-emerald-700 hover:bg-emerald-600 text-emerald-200 rounded-lg transition">
+                className="px-1.5 sm:px-3 py-1 text-[10px] sm:text-xs bg-emerald-700 hover:bg-emerald-600 text-emerald-200 rounded-lg transition whitespace-nowrap">
                 {t.share}
               </button>
             </>
           )}
-          <span className="text-gray-500 text-xs ml-2">{user?.email}</span>
-          <button onClick={logout} className="text-xs text-gray-500 hover:text-red-400 transition">
+          <span className="text-[10px] sm:text-xs text-gray-500 hidden sm:inline ml-1">{user?.email}</span>
+          <button onClick={logout} className="text-[10px] sm:text-xs text-gray-500 hover:text-red-400 transition whitespace-nowrap">
             {t.logout}
           </button>
         </div>
@@ -511,7 +508,7 @@ export default function TreeEditorPage() {
               <Background color="#374151" gap={20} />
               <Controls className="!bg-gray-800 !border-gray-700" />
               <MiniMap
-                className="!bg-gray-800 !border-gray-700"
+                className="!bg-gray-800 !border-gray-700 hidden md:block"
                 nodeColor={(n) => (n.data?.gender === 'female' ? '#ec4899' : '#3b82f6')}
               />
             </ReactFlow>
@@ -519,7 +516,7 @@ export default function TreeEditorPage() {
             {/* Floating Add Button */}
             <button
               onClick={addRootPerson}
-              className="absolute bottom-6 right-6 w-14 h-14 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full shadow-xl flex items-center justify-center text-2xl font-bold transition-all hover:scale-110 hover:shadow-emerald-500/30 z-10"
+              className="absolute bottom-4 right-4 w-12 h-12 sm:w-14 sm:h-14 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full shadow-xl flex items-center justify-center text-xl sm:text-2xl font-bold transition-all hover:scale-110 hover:shadow-emerald-500/30 z-10"
               title="Add Person"
             >
               +
@@ -553,7 +550,7 @@ export default function TreeEditorPage() {
             {/* Edit Name Modal */}
             {editingNode && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 w-80">
+                <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 sm:p-6 w-[90vw] sm:w-80">
                   <h3 className="text-white font-semibold mb-4">{t.editName}</h3>
                   <input
                     type="text"

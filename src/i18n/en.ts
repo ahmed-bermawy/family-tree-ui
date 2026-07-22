@@ -56,7 +56,7 @@ export const en = {
   addSibling: '👫 Add Sibling',
   edit: '✏️ Edit Name',
   deletePerson: '🗑️ Delete',
-  deleteConfirm: 'Delete this person and all their connections?',
+  deletePersonConfirm: 'Delete this person and all their connections?',
 
   // Share modal
   shareTitle: 'Share Your Family Tree',
@@ -83,6 +83,7 @@ export const en = {
   canvasNotReady: 'Canvas not ready yet',
   printFailed: 'Could not generate image. Try taking a screenshot manually.',
   shareCopied: 'Share link copied!',
+  deleteTreeConfirm: 'Are you sure you want to delete this tree?',
 
   // Language
   language: 'English',

@@ -13,6 +13,7 @@ interface Tree {
 export default function TreeListPage() {
   const [treeList, setTreeList] = useState<Tree[]>([]);
   const [newName, setNewName] = useState('');
+  const [nameError, setNameError] = useState('');
   const { user, logout } = useAuth();
   const { t, toggleLang } = useI18n();
   const navigate = useNavigate();
@@ -27,13 +28,18 @@ export default function TreeListPage() {
   }, []);
 
   const createTree = async () => {
-    if (!newName.trim()) return;
+    if (!newName.trim()) {
+      setNameError('Please enter a name for your family tree');
+      return;
+    }
+    setNameError('');
     const tree = await trees.create(newName.trim());
     setNewName('');
     navigate(`/trees/${tree.id}`);
   };
 
   const deleteTree = async (id: number) => {
+    if (!confirm(t.deleteTreeConfirm)) return;
     await trees.delete(id);
     loadTrees();
   };
@@ -61,22 +67,27 @@ export default function TreeListPage() {
           <p className="text-gray-400">{t.treeDesc}</p>
         </div>
 
-        <div className="flex gap-3 mb-8">
+        <div className="flex flex-col sm:flex-row gap-3 mb-2">
           <input
             type="text"
             value={newName}
-            onChange={(e) => setNewName(e.target.value)}
+            onChange={(e) => { setNewName(e.target.value); setNameError(''); }}
             onKeyDown={(e) => e.key === 'Enter' && createTree()}
             placeholder={t.treePlaceholder}
-            className="flex-1 px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className={`flex-1 px-4 py-2.5 bg-gray-800 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition ${
+              nameError ? 'border-red-500' : 'border-gray-700'
+            }`}
           />
           <button
             onClick={createTree}
-            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition shadow-lg"
+            className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition shadow-lg cursor-pointer"
           >
             {t.create}
           </button>
         </div>
+        {nameError && (
+          <p className="text-red-400 text-sm mb-6">⚠️ {nameError}</p>
+        )}
 
         <div className="grid gap-4 md:grid-cols-2">
           {treeList.map((tree) => (

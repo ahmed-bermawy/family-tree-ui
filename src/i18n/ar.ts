@@ -58,7 +58,7 @@ export const ar: Translations = {
   addSibling: '👫 أضف أخ/أخت',
   edit: '✏️ تعديل الاسم',
   deletePerson: '🗑️ حذف',
-  deleteConfirm: 'هل تريد حذف هذا الشخص وجميع علاقاته؟',
+  deletePersonConfirm: 'هل تريد حذف هذا الشخص وجميع علاقاته؟',
 
   // Share modal
   shareTitle: 'شارك شجرة عائلتك',
@@ -85,6 +85,7 @@ export const ar: Translations = {
   canvasNotReady: 'اللوحة غير جاهزة بعد',
   printFailed: 'تعذر إنشاء الصورة. حاول أخذ لقطة شاشة.',
   shareCopied: 'تم نسخ رابط المشاركة!',
+  deleteTreeConfirm: 'هل أنت متأكد أنك تريد حذف هذه الشجرة؟',
 
   // Language
   language: 'العربية',
