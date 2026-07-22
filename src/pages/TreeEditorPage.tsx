@@ -25,11 +25,15 @@ const SPOUSE_GAP = 180;
 const GENERATION_GAP = 160;
 
 function buildManualLayout(nodes: Node[], edges: Edge[]): Node[] {
-  // Simple manual layout: place generation by level
+  // Separate spouse edges from parent-child edges
+  const spouseEdges = edges.filter((e) => e.label === 'spouse');
+  const hierarchyEdges = edges.filter((e) => e.label !== 'spouse');
+
+  // Build parent-child adjacency
   const adjacency = new Map<string, string[]>();
   const parents = new Map<string, string[]>();
 
-  for (const e of edges) {
+  for (const e of hierarchyEdges) {
     if (!adjacency.has(e.source)) adjacency.set(e.source, []);
     adjacency.get(e.source)!.push(e.target);
     if (!parents.has(e.target)) parents.set(e.target, []);
@@ -87,6 +91,19 @@ function buildManualLayout(nodes: Node[], edges: Edge[]): Node[] {
     if (!positioned.has(n.id)) {
       maxY += GENERATION_GAP;
       positioned.set(n.id, { x: 0, y: maxY });
+    }
+  }
+
+  // Position spouses side-by-side
+  for (const e of spouseEdges) {
+    const sourcePos = positioned.get(e.source);
+    const targetPos = positioned.get(e.target);
+    if (sourcePos && targetPos) {
+      // Place spouse to the right at the same level
+      positioned.set(e.target, {
+        x: sourcePos.x + SPOUSE_GAP,
+        y: sourcePos.y,
+      });
     }
   }
 
@@ -164,10 +181,12 @@ export default function TreeEditorPage() {
 
       const name = prompt(`Enter name for new ${type}:`);
       if (!name) return;
+      const gender = prompt('Gender? (male/female/skip):')?.toLowerCase() || '';
+      const validGender = ['male', 'female'].includes(gender) ? gender : '';
 
       try {
         // Create the new person
-        const newPerson = await persons.create({ name, treeId, gender: '' });
+        const newPerson = await persons.create({ name, treeId, gender: validGender });
 
         // Determine relationship direction
         let fromId = Number(targetNodeId);
@@ -183,8 +202,8 @@ export default function TreeEditorPage() {
           // Find a parent of the target and add as child
           const parentEdge = edges.find((e) => e.target === targetNodeId);
           if (parentEdge) {
-            fromId = Number(parentEdge.source);
-            toId = newPerson.id;
+            fromId = newPerson.id;
+            toId = Number(parentEdge.source);
             relType = 'child';
           } else {
             alert('No parent found. Add a parent first.');
@@ -194,9 +213,9 @@ export default function TreeEditorPage() {
         } else if (type === 'spouse') {
           relType = 'spouse';
         } else if (type === 'child') {
-          // Child: target is parent, new person is child
-          fromId = Number(targetNodeId);
-          toId = newPerson.id;
+          // Child: new person is child, target is parent
+          fromId = newPerson.id;
+          toId = Number(targetNodeId);
           relType = 'child';
         }
 
@@ -258,8 +277,9 @@ export default function TreeEditorPage() {
   const addFirstPerson = async () => {
     const name = prompt('Enter your name:');
     if (!name) return;
+    const gender = prompt('Gender? (male/female/skip):')?.toLowerCase() || '';
     try {
-      await persons.create({ name, treeId, gender: '' });
+      await persons.create({ name, treeId, gender: ['male', 'female'].includes(gender) ? gender : '' });
       loadGraph();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to create person');
@@ -269,8 +289,9 @@ export default function TreeEditorPage() {
   const addRootPerson = async () => {
     const name = prompt('Enter person name:');
     if (!name) return;
+    const gender = prompt('Gender? (male/female/skip):')?.toLowerCase() || '';
     try {
-      await persons.create({ name, treeId, gender: '' });
+      await persons.create({ name, treeId, gender: ['male', 'female'].includes(gender) ? gender : '' });
       loadGraph();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to create person');
