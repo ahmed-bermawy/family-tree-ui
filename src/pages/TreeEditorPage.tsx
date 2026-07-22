@@ -20,6 +20,7 @@ import PersonNode from '../components/PersonNode';
 import CoupleNode from '../components/CoupleNode';
 import NodeContextMenu from '../components/NodeContextMenu';
 import PersonFormModal from '../components/PersonFormModal';
+import ShareModal from '../components/ShareModal';
 import { toPng } from 'html-to-image';
 
 const nodeTypes = { personNode: PersonNode, coupleNode: CoupleNode };
@@ -172,6 +173,7 @@ export default function TreeEditorPage() {
   } | null>(null);
   const [formName, setFormName] = useState('');
   const [formGender, setFormGender] = useState('');
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const loadGraph = useCallback(async () => {
     try {
@@ -370,12 +372,12 @@ export default function TreeEditorPage() {
           relType = 'parent';
         } else if (type === 'sibling') {
           const parentEdge = edges.find(
-            (e) => (e.target === targetNodeId && e.label === 'parent') ||
-                   (e.source === targetNodeId && e.label === 'child')
+            (e) => (e.target === targetNodeId && e.data?.type === 'parent') ||
+                   (e.source === targetNodeId && e.data?.type === 'child')
           );
           if (parentEdge) {
             const parentId = resolvePersonId(
-              parentEdge.label === 'parent' ? parentEdge.source : parentEdge.target
+              parentEdge.data?.type === 'parent' ? parentEdge.source : parentEdge.target
             );
             fromId = newPerson.id;
             toId = parentId;
@@ -414,56 +416,22 @@ export default function TreeEditorPage() {
   const isEmpty = !loading && nodes.length === 0;
 
   const handlePrint = async () => {
-    const el = reactFlowWrapper.current?.querySelector('.react-flow__viewport') as HTMLElement;
-    if (!el) { alert('Canvas not ready yet'); return; }
+    // Capture the full React Flow wrapper
+    const el = reactFlowWrapper.current;
+    if (!el) return;
     try {
       const dataUrl = await toPng(el, { backgroundColor: '#111827', pixelRatio: 2 });
-      const win = window.open('', '_blank');
-      if (win) {
-        win.document.write(`
-          <html><head><title>${treeName}</title>
-          <style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#111827}img{max-width:100%;height:auto}</style>
-          </head><body><img src="${dataUrl}" onload="window.print();window.close()" /></body></html>
-        `);
-        win.document.close();
-      } else {
-        // Popup blocked — download instead
-        const link = document.createElement('a');
-        link.download = `${treeName || 'family-tree'}.png`;
-        link.href = dataUrl;
-        link.click();
-      }
+      const link = document.createElement('a');
+      link.download = `${treeName || 'family-tree'}.png`;
+      link.href = dataUrl;
+      link.click();
     } catch (err) {
-      alert('Failed to generate image. Try downloading instead.');
-      console.error(err);
+      alert('Could not generate image. Try taking a screenshot manually.');
     }
   };
 
-  const getShareUrl = () => `${window.location.origin}/share/${treeId}`;
-
   const handleCopyShareLink = () => {
-    const url = getShareUrl();
-    // navigator.clipboard may not work over HTTP
-    try {
-      if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(url).then(() => {
-          alert('✅ Share link copied to clipboard!\n' + url);
-        });
-      } else {
-        throw new Error('clipboard API not available');
-      }
-    } catch {
-      // Fallback: prompt the user to copy manually
-      const textarea = document.createElement('textarea');
-      textarea.value = url;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-      alert('✅ Share link copied!\n🔗 ' + url);
-    }
+    setShowShareModal(true);
   };
 
   return (
@@ -626,6 +594,15 @@ export default function TreeEditorPage() {
           onConfirm={handleFormConfirm}
           onCancel={() => setFormModal(null)}
           confirmLabel={formModal.mode === 'addRelation' ? `Add ${formModal.relationType}` : 'Add'}
+        />
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <ShareModal
+          url={`${window.location.origin}/share/${treeId}`}
+          treeName={treeName}
+          onClose={() => setShowShareModal(false)}
         />
       )}
     </div>
