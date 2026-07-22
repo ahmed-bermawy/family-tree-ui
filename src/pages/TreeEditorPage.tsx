@@ -243,7 +243,6 @@ export default function TreeEditorPage() {
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
-      // Show context menu
       const bounds = reactFlowWrapper.current?.getBoundingClientRect();
       if (bounds) {
         setContextMenu({
@@ -255,6 +254,30 @@ export default function TreeEditorPage() {
     },
     [],
   );
+
+  const addFirstPerson = async () => {
+    const name = prompt('Enter your name:');
+    if (!name) return;
+    try {
+      await persons.create({ name, treeId, gender: '' });
+      loadGraph();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to create person');
+    }
+  };
+
+  const addRootPerson = async () => {
+    const name = prompt('Enter person name:');
+    if (!name) return;
+    try {
+      await persons.create({ name, treeId, gender: '' });
+      loadGraph();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to create person');
+    }
+  };
+
+  const isEmpty = !loading && nodes.length === 0;
 
   return (
     <div className="h-screen bg-gray-900 flex flex-col">
@@ -283,6 +306,20 @@ export default function TreeEditorPage() {
           <div className="flex items-center justify-center h-full text-gray-400">
             <div className="animate-spin h-8 w-8 border-4 border-emerald-500 border-t-transparent rounded-full" />
           </div>
+        ) : isEmpty ? (
+          <div className="flex flex-col items-center justify-center h-full gap-6">
+            <div className="text-6xl">🌳</div>
+            <h2 className="text-2xl font-bold text-white">Your tree is empty</h2>
+            <p className="text-gray-400 text-center max-w-md">
+              Start building your family tree by adding the first person!
+            </p>
+            <button
+              onClick={addFirstPerson}
+              className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-lg transition-all shadow-lg hover:shadow-emerald-500/25 hover:scale-105"
+            >
+              + Add First Person
+            </button>
+          </div>
         ) : (
           <>
             <ReactFlow
@@ -291,6 +328,7 @@ export default function TreeEditorPage() {
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onNodeClick={onNodeClick}
+              onPaneClick={() => setContextMenu(null)}
               nodeTypes={nodeTypes}
               fitView
               selectionMode={SelectionMode.Partial}
@@ -306,6 +344,15 @@ export default function TreeEditorPage() {
                 nodeColor={(n) => (n.data?.gender === 'female' ? '#ec4899' : '#3b82f6')}
               />
             </ReactFlow>
+
+            {/* Floating Add Button */}
+            <button
+              onClick={addRootPerson}
+              className="absolute bottom-6 right-6 w-14 h-14 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full shadow-xl flex items-center justify-center text-2xl font-bold transition-all hover:scale-110 hover:shadow-emerald-500/30 z-10"
+              title="Add Person"
+            >
+              +
+            </button>
 
             {/* Context Menu */}
             {contextMenu && (
