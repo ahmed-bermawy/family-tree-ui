@@ -23,67 +23,99 @@ import PersonFormModal from '../components/PersonFormModal';
 
 const nodeTypes = { personNode: PersonNode, coupleNode: CoupleNode };
 
-const SPOUSE_GAP = 180;
-const CHILD_GAP = 220;
+// Estimate node width based on type
+function getNodeWidth(nodeId: string, nodes: Node[]): number {
+  const node = nodes.find((n) => n.id === nodeId);
+  if (node?.type === 'coupleNode') return 320;
+  return 170; // personNode
+}
+
+const MIN_GAP = 40; // min px between node edges
 const GENERATION_GAP = 160;
 
 function buildManualLayout(nodes: Node[], edges: Edge[]): Node[] {
   const spouseEdges = edges.filter((e) => e.label === 'spouse');
   const hierarchyEdges = edges.filter((e) => e.label !== 'spouse');
 
-  const adjacency = new Map<string, string[]>();
+  // Build parent → children adjacency
+  const children = new Map<string, string[]>();
   const parents = new Map<string, string[]>();
 
   for (const e of hierarchyEdges) {
-    // All edges now have source=parent, target=child (flipped for 'child' type)
-    if (!adjacency.has(e.source)) adjacency.set(e.source, []);
-    adjacency.get(e.source)!.push(e.target);
+    if (!children.has(e.source)) children.set(e.source, []);
+    children.get(e.source)!.push(e.target);
     if (!parents.has(e.target)) parents.set(e.target, []);
     parents.get(e.target)!.push(e.source);
   }
 
+  // BFS to assign levels
   const level = new Map<string, number>();
   const queue: string[] = [];
-
   for (const n of nodes) {
     if (!parents.has(n.id) || parents.get(n.id)!.length === 0) {
       level.set(n.id, 0);
       queue.push(n.id);
     }
   }
-
   while (queue.length > 0) {
     const current = queue.shift()!;
-    const currentLevel = level.get(current) || 0;
-    const neighbors = adjacency.get(current) || [];
-    for (const neighbor of neighbors) {
-      const nextLevel = currentLevel + 1;
-      if (!level.has(neighbor) || level.get(neighbor)! < nextLevel) {
-        level.set(neighbor, nextLevel);
-        queue.push(neighbor);
+    const curLevel = level.get(current) || 0;
+    for (const child of children.get(current) || []) {
+      const next = curLevel + 1;
+      if (!level.has(child) || level.get(child)! < next) {
+        level.set(child, next);
+        queue.push(child);
       }
     }
   }
 
-  const byLevel = new Map<number, string[]>();
-  for (const [id, lvl] of level) {
-    if (!byLevel.has(lvl)) byLevel.set(lvl, []);
-    byLevel.get(lvl)!.push(id);
-  }
-
+  // Build tree: for each node, find all its descendant subtrees
+  // Position each node centered over its children
   const positioned = new Map<string, { x: number; y: number }>();
-  let maxY = 0;
 
-  for (const [lvl, ids] of byLevel) {
-    const y = lvl * GENERATION_GAP;
-    const totalWidth = ids.length * CHILD_GAP;
-    const startX = -totalWidth / 2 + CHILD_GAP / 2;
-    ids.forEach((id, i) => {
-      positioned.set(id, { x: startX + i * CHILD_GAP, y });
-    });
-    maxY = y;
+  function calcSubtreeWidth(nodeId: string): number {
+    const myWidth = getNodeWidth(nodeId, nodes);
+    const kidList = children.get(nodeId) || [];
+    if (kidList.length === 0) return myWidth;
+    const kidWidths = kidList.map((k) => calcSubtreeWidth(k));
+    const totalKidSpan = kidWidths.reduce((a, b) => a + b, 0) + (kidList.length - 1) * MIN_GAP;
+    return Math.max(myWidth, totalKidSpan);
   }
 
+  function positionNode(nodeId: string, centerX: number, y: number) {
+    positioned.set(nodeId, { x: centerX - getNodeWidth(nodeId, nodes) / 2, y });
+    const kidList = children.get(nodeId) || [];
+    if (kidList.length === 0) return;
+    const kidWidths = kidList.map((k) => calcSubtreeWidth(k));
+    const totalKidSpan = kidWidths.reduce((a, b) => a + b, 0) + (kidList.length - 1) * MIN_GAP;
+    let kidX = centerX - totalKidSpan / 2;
+    for (let i = 0; i < kidList.length; i++) {
+      const kw = kidWidths[i];
+      positionNode(kidList[i], kidX + kw / 2, y + GENERATION_GAP);
+      kidX += kw + MIN_GAP;
+    }
+  }
+
+  // Find roots (level 0) and position them
+  const roots = nodes.filter((n) => level.get(n.id) === 0);
+
+  if (roots.length === 1) {
+    // Single root: center the whole tree
+    positionNode(roots[0].id, 0, 0);
+  } else if (roots.length > 1) {
+    // Multiple roots: space them out
+    let x = -(roots.length * 300) / 2;
+    for (const root of roots) {
+      positionNode(root.id, x + 150, 0);
+      x += 300;
+    }
+  }
+
+  // Handle orphans (nodes that somehow weren't positioned)
+  let maxY = 0;
+  for (const [, pos] of positioned) {
+    if (pos.y > maxY) maxY = pos.y;
+  }
   for (const n of nodes) {
     if (!positioned.has(n.id)) {
       maxY += GENERATION_GAP;
@@ -96,8 +128,10 @@ function buildManualLayout(nodes: Node[], edges: Edge[]): Node[] {
     const sourcePos = positioned.get(e.source);
     const targetPos = positioned.get(e.target);
     if (sourcePos && targetPos) {
+      // Move spouse to the right of their partner
+      const sourceWidth = getNodeWidth(e.source, nodes);
       positioned.set(e.target, {
-        x: sourcePos.x + SPOUSE_GAP,
+        x: sourcePos.x + sourceWidth + 10,
         y: sourcePos.y,
       });
     }
