@@ -415,7 +415,7 @@ export default function TreeEditorPage() {
 
   const handlePrint = async () => {
     const el = reactFlowWrapper.current?.querySelector('.react-flow__viewport') as HTMLElement;
-    if (!el) return;
+    if (!el) { alert('Canvas not ready yet'); return; }
     try {
       const dataUrl = await toPng(el, { backgroundColor: '#111827', pixelRatio: 2 });
       const win = window.open('', '_blank');
@@ -426,16 +426,44 @@ export default function TreeEditorPage() {
           </head><body><img src="${dataUrl}" onload="window.print();window.close()" /></body></html>
         `);
         win.document.close();
+      } else {
+        // Popup blocked — download instead
+        const link = document.createElement('a');
+        link.download = `${treeName || 'family-tree'}.png`;
+        link.href = dataUrl;
+        link.click();
       }
-    } catch {}
+    } catch (err) {
+      alert('Failed to generate image. Try downloading instead.');
+      console.error(err);
+    }
   };
 
   const getShareUrl = () => `${window.location.origin}/share/${treeId}`;
 
   const handleCopyShareLink = () => {
-    navigator.clipboard.writeText(getShareUrl()).then(() => {
-      alert('Share link copied to clipboard!');
-    });
+    const url = getShareUrl();
+    // navigator.clipboard may not work over HTTP
+    try {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+          alert('✅ Share link copied to clipboard!\n' + url);
+        });
+      } else {
+        throw new Error('clipboard API not available');
+      }
+    } catch {
+      // Fallback: prompt the user to copy manually
+      const textarea = document.createElement('textarea');
+      textarea.value = url;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      alert('✅ Share link copied!\n🔗 ' + url);
+    }
   };
 
   return (
