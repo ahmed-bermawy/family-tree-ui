@@ -1,3 +1,5 @@
+import { useI18n } from '../i18n/I18nContext';
+
 interface Props {
   x: number;
   y: number;
@@ -8,13 +10,15 @@ interface Props {
 }
 
 export default function NodeContextMenu({ x, y, onAdd, onEdit, onDelete, onClose }: Props) {
+  const { t } = useI18n();
+
   const options = [
-    { label: '➕ Add Spouse', action: () => onAdd('spouse') },
-    { label: '👶 Add Child', action: () => onAdd('child') },
-    { label: '👴 Add Parent', action: () => onAdd('parent') },
-    { label: '👫 Add Sibling', action: () => onAdd('sibling') },
-    { label: '✏️ Edit Name', action: onEdit },
-    { label: '🗑️ Delete', action: onDelete, danger: true },
+    { label: t.addSpouse, action: () => onAdd('spouse') },
+    { label: t.addChild, action: () => onAdd('child') },
+    { label: t.addParent, action: () => onAdd('parent') },
+    { label: t.addSibling, action: () => onAdd('sibling') },
+    { label: t.edit, action: onEdit },
+    { label: t.deletePerson, action: onDelete, danger: true },
   ];
 
   return (

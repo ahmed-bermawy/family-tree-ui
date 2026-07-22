@@ -22,6 +22,7 @@ import NodeContextMenu from '../components/NodeContextMenu';
 import PersonFormModal from '../components/PersonFormModal';
 import ShareModal from '../components/ShareModal';
 import { toPng } from 'html-to-image';
+import { useI18n } from '../i18n/I18nContext';
 
 const nodeTypes = { personNode: PersonNode, coupleNode: CoupleNode };
 
@@ -149,6 +150,7 @@ export default function TreeEditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
+  const { t, toggleLang } = useI18n();
   const treeId = Number(id);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
@@ -280,7 +282,7 @@ export default function TreeEditorPage() {
 
   const deletePerson = useCallback(
     async (nodeId: string) => {
-      if (!confirm('Delete this person and all their connections?')) return;
+      if (!confirm(t.deleteConfirm)) return;
       try {
         await persons.delete(Number(nodeId));
         loadGraph();
@@ -374,18 +376,15 @@ export default function TreeEditorPage() {
           relType = 'parent';
         } else if (type === 'sibling') {
           const parentEdge = edges.find(
-            (e) => (e.target === targetNodeId && e.data?.type === 'parent') ||
-                   (e.source === targetNodeId && e.data?.type === 'child')
+            (e) => e.target === targetNodeId
           );
           if (parentEdge) {
-            const parentId = resolvePersonId(
-              parentEdge.data?.type === 'parent' ? parentEdge.source : parentEdge.target
-            );
+            const parentId = resolvePersonId(parentEdge.source);
             fromId = newPerson.id;
             toId = parentId;
             relType = 'child';
           } else {
-            alert('No parent found. Add a parent first.');
+            alert(t.noParentFound);
             await persons.delete(newPerson.id);
             setFormModal(null);
             return;
@@ -410,9 +409,9 @@ export default function TreeEditorPage() {
 
   const getFormTitle = () => {
     if (!formModal) return '';
-    if (formModal.mode === 'addFirst') return 'Add Yourself';
-    if (formModal.mode === 'addRoot') return 'Add Person';
-    return `Add ${formModal.relationType}`;
+    if (formModal.mode === 'addFirst') return t.addYourself;
+    if (formModal.mode === 'addRoot') return t.addPerson;
+    return `${t.add} ${formModal.relationType}`;
   };
 
   const isEmpty = !loading && nodes.length === 0;
@@ -428,7 +427,7 @@ export default function TreeEditorPage() {
       link.href = dataUrl;
       link.click();
     } catch (err) {
-      alert('Could not generate image. Try taking a screenshot manually.');
+      alert(t.printFailed);
     }
   };
 
@@ -445,26 +444,29 @@ export default function TreeEditorPage() {
             onClick={() => navigate('/trees')}
             className="text-gray-400 hover:text-white transition text-sm"
           >
-            ← Back
+            {t.back}
           </button>
-          <h1 className="text-lg font-semibold text-white">{treeName || 'Loading...'}</h1>
+          <h1 className="text-lg font-semibold text-white">{treeName || t.loading}</h1>
         </div>
         <div className="flex items-center gap-2">
           {!isEmpty && (
             <>
+              <button onClick={toggleLang} className="text-xs text-gray-500 hover:text-emerald-400 transition px-2">
+                {t.langSwitch}
+              </button>
               <button onClick={handlePrint}
                 className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition">
-                🖨️ Print
+                {t.print}
               </button>
               <button onClick={handleCopyShareLink}
                 className="px-3 py-1 text-xs bg-emerald-700 hover:bg-emerald-600 text-emerald-200 rounded-lg transition">
-                🔗 Share
+                {t.share}
               </button>
             </>
           )}
           <span className="text-gray-500 text-xs ml-2">{user?.email}</span>
           <button onClick={logout} className="text-xs text-gray-500 hover:text-red-400 transition">
-            Logout
+            {t.logout}
           </button>
         </div>
       </nav>
@@ -478,15 +480,15 @@ export default function TreeEditorPage() {
         ) : isEmpty ? (
           <div className="flex flex-col items-center justify-center h-full gap-6">
             <div className="text-6xl">🌳</div>
-            <h2 className="text-2xl font-bold text-white">Your tree is empty</h2>
+            <h2 className="text-2xl font-bold text-white">{t.emptyTitle}</h2>
             <p className="text-gray-400 text-center max-w-md">
-              Start building your family tree by adding the first person!
+              {t.emptyDesc}
             </p>
             <button
               onClick={addFirstPerson}
               className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-lg transition-all shadow-lg hover:shadow-emerald-500/25 hover:scale-105"
             >
-              + Add First Person
+              {t.addFirstPerson}
             </button>
           </div>
         ) : (
@@ -552,7 +554,7 @@ export default function TreeEditorPage() {
             {editingNode && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                 <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 w-80">
-                  <h3 className="text-white font-semibold mb-4">Edit Name</h3>
+                  <h3 className="text-white font-semibold mb-4">{t.editName}</h3>
                   <input
                     type="text"
                     value={editName}
@@ -568,14 +570,14 @@ export default function TreeEditorPage() {
                     <button
                       onClick={() => setEditingNode(null)}
                       className="px-4 py-1.5 text-sm text-gray-400 hover:text-white transition"
-                    >
-                      Cancel
-                    </button>
-                    <button
+                      >
+                      {t.cancel}
+                      </button>
+                      <button
                       onClick={() => renamePerson(editingNode, editName)}
                       className="px-4 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition"
-                    >
-                      Save
+                      >
+                      {t.save}
                     </button>
                   </div>
                 </div>
@@ -595,7 +597,7 @@ export default function TreeEditorPage() {
           onGenderChange={setFormGender}
           onConfirm={handleFormConfirm}
           onCancel={() => setFormModal(null)}
-          confirmLabel={formModal.mode === 'addRelation' ? `Add ${formModal.relationType}` : 'Add'}
+          confirmLabel={formModal.mode === 'addRelation' ? `${t.add} ${formModal.relationType}` : t.add}
         />
       )}
 

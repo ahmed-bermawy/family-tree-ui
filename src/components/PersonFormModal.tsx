@@ -1,3 +1,5 @@
+import { useI18n } from '../i18n/I18nContext';
+
 interface Props {
   title: string;
   name: string;
@@ -10,15 +12,11 @@ interface Props {
 }
 
 export default function PersonFormModal({
-  title,
-  name,
-  gender,
-  onNameChange,
-  onGenderChange,
-  onConfirm,
-  onCancel,
-  confirmLabel = 'Add',
+  title, name, gender, onNameChange, onGenderChange,
+  onConfirm, onCancel, confirmLabel,
 }: Props) {
+  const { t } = useI18n();
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div
@@ -26,26 +24,24 @@ export default function PersonFormModal({
         style={{ animation: 'fadeIn 0.2s ease-out' }}
       >
         <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>
-        <p className="text-gray-400 text-sm mb-5">Enter the person's details below</p>
+        <p className="text-gray-400 text-sm mb-5">{t.personDetails}</p>
 
-        {/* Name */}
-        <label className="text-gray-300 text-xs font-medium mb-1.5 block">Name</label>
+        <label className="text-gray-300 text-xs font-medium mb-1.5 block">{t.name}</label>
         <input
           type="text"
           value={name}
           onChange={(e) => onNameChange(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && name.trim() && onConfirm()}
           className="w-full px-3.5 py-2.5 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition mb-4"
-          placeholder="Enter full name"
+          placeholder={t.namePlaceholder}
           autoFocus
         />
 
-        {/* Gender */}
-        <label className="text-gray-300 text-xs font-medium mb-1.5 block">Gender</label>
+        <label className="text-gray-300 text-xs font-medium mb-1.5 block">{t.genderTitle}</label>
         <div className="flex gap-3 mb-6">
           {[
-            { value: 'male', label: '♂ Male', color: 'blue' },
-            { value: 'female', label: '♀ Female', color: 'pink' },
+            { value: 'male', label: t.male, color: 'blue' },
+            { value: 'female', label: t.female, color: 'pink' },
           ].map((opt) => (
             <button
               key={opt.value}
@@ -71,24 +67,23 @@ export default function PersonFormModal({
                 : 'bg-gray-700/50 border-gray-600 text-gray-500 hover:border-gray-500'
             }`}
           >
-            Skip
+            {t.skip}
           </button>
         </div>
 
-        {/* Actions */}
         <div className="flex gap-3 justify-end">
           <button
             onClick={onCancel}
             className="px-4 py-2 text-sm text-gray-400 hover:text-white transition rounded-lg hover:bg-gray-700"
           >
-            Cancel
+            {t.cancel}
           </button>
           <button
             onClick={onConfirm}
             disabled={!name.trim()}
             className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-500 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
           >
-            {confirmLabel}
+            {confirmLabel || t.add}
           </button>
         </div>
       </div>

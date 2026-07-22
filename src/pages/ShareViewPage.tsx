@@ -4,6 +4,7 @@ import { ReactFlow, Background, Controls, type Node, type Edge, MarkerType } fro
 import '@xyflow/react/dist/style.css';
 import PersonNode from '../components/PersonNode';
 import CoupleNode from '../components/CoupleNode';
+import { useI18n } from '../i18n/I18nContext';
 
 const nodeTypes = { personNode: PersonNode, coupleNode: CoupleNode };
 
@@ -14,6 +15,7 @@ export default function ShareViewPage() {
   const [treeName, setTreeName] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { t } = useI18n();
 
   useEffect(() => {
     fetch(`http://76.13.60.23:3000/trees/share/${id}`)
@@ -142,7 +144,7 @@ export default function ShareViewPage() {
         setLoading(false);
       })
       .catch(() => {
-        setError('Tree not found or link is invalid');
+        setError(t.treeNotFound);
         setLoading(false);
       });
   }, [id]);
@@ -161,7 +163,7 @@ export default function ShareViewPage() {
         <div className="text-6xl">🔗</div>
         <h1 className="text-2xl font-bold text-white">{error}</h1>
         <Link to="/" className="text-emerald-400 hover:text-emerald-300 transition">
-          Go home
+          {t.goHome}
         </Link>
       </div>
     );
@@ -173,11 +175,11 @@ export default function ShareViewPage() {
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-semibold text-white">{treeName}</h1>
           <span className="text-xs bg-emerald-600/20 text-emerald-400 px-2 py-0.5 rounded-full">
-            Shared View
+            {t.sharedView}
           </span>
         </div>
         <Link to="/" className="text-sm text-gray-400 hover:text-white transition">
-          Build your own tree →
+          {t.buildYourOwn}
         </Link>
       </nav>
       <div className="flex-1">

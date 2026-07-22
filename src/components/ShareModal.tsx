@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useI18n } from '../i18n/I18nContext';
 
 interface Props {
   url: string;
@@ -8,6 +9,7 @@ interface Props {
 
 export default function ShareModal({ url, treeName, onClose }: Props) {
   const [copied, setCopied] = useState(false);
+  const { t } = useI18n();
 
   const copyLink = () => {
     const textarea = document.createElement('textarea');
@@ -29,16 +31,14 @@ export default function ShareModal({ url, treeName, onClose }: Props) {
         style={{ animation: 'fadeIn 0.2s ease-out' }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Icon */}
         <div className="text-center mb-4">
           <span className="text-4xl">🔗</span>
         </div>
 
-        <h3 className="text-xl font-bold text-white text-center mb-1">Share Your Family Tree</h3>
+        <h3 className="text-xl font-bold text-white text-center mb-1">{t.shareTitle}</h3>
         <p className="text-gray-400 text-sm text-center mb-5 leading-relaxed">
-          Your family history is a gift — share <strong className="text-white">{treeName}</strong> with the people who matter most.{' '}
-          <span className="text-emerald-400">Send this link to your relatives</span> so they can
-          explore the tree, see the connections, and feel the love of your family story. 💚
+          {t.shareDesc} <strong className="text-white">{treeName}</strong> {t.shareDesc2}{' '}
+          <span className="text-emerald-400">{t.shareDesc3}</span>{t.shareDesc4}
         </p>
 
         <div className="bg-gray-700/30 border border-gray-600/50 rounded-xl px-1 py-1 flex items-center gap-1 mb-2">
@@ -57,7 +57,7 @@ export default function ShareModal({ url, treeName, onClose }: Props) {
                 : 'bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 hover:text-emerald-300'
             }`}
           >
-            {copied ? '✅ Copied!' : '📋 Copy'}
+            {copied ? t.copied : t.copy}
           </button>
         </div>
 
@@ -66,7 +66,7 @@ export default function ShareModal({ url, treeName, onClose }: Props) {
             onClick={onClose}
             className="px-5 py-2 text-sm text-gray-400 hover:text-white transition rounded-lg hover:bg-gray-700 cursor-pointer select-none"
           >
-            Close
+            {t.close}
           </button>
         </div>
       </div>
