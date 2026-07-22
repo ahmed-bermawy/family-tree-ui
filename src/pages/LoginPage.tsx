@@ -15,6 +15,8 @@ export default function LoginPage() {
     setError('');
     try {
       const res = await auth.login({ email, password });
+      // Save token first, then fetch profile
+      localStorage.setItem('token', res.access_token);
       const profile = await auth.profile();
       login(res.access_token, profile);
       navigate('/trees');

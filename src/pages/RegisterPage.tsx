@@ -15,6 +15,7 @@ export default function RegisterPage() {
     setError('');
     try {
       const res = await auth.register({ email, password });
+      localStorage.setItem('token', res.access_token);
       const profile = await auth.profile();
       login(res.access_token, profile);
       navigate('/trees');
