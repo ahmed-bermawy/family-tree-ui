@@ -18,6 +18,7 @@ import { trees, persons, relationships } from '../api/endpoints';
 import { useAuth } from '../context/AuthContext';
 import PersonNode from '../components/PersonNode';
 import NodeContextMenu from '../components/NodeContextMenu';
+import PersonFormModal from '../components/PersonFormModal';
 
 const nodeTypes = { personNode: PersonNode };
 
@@ -25,11 +26,9 @@ const SPOUSE_GAP = 180;
 const GENERATION_GAP = 160;
 
 function buildManualLayout(nodes: Node[], edges: Edge[]): Node[] {
-  // Separate spouse edges from parent-child edges
   const spouseEdges = edges.filter((e) => e.label === 'spouse');
   const hierarchyEdges = edges.filter((e) => e.label !== 'spouse');
 
-  // Build parent-child adjacency
   const adjacency = new Map<string, string[]>();
   const parents = new Map<string, string[]>();
 
@@ -40,11 +39,9 @@ function buildManualLayout(nodes: Node[], edges: Edge[]): Node[] {
     parents.get(e.target)!.push(e.source);
   }
 
-  // Calculate levels via BFS
   const level = new Map<string, number>();
   const queue: string[] = [];
 
-  // Find root nodes (no parents)
   for (const n of nodes) {
     if (!parents.has(n.id) || parents.get(n.id)!.length === 0) {
       level.set(n.id, 0);
@@ -65,7 +62,6 @@ function buildManualLayout(nodes: Node[], edges: Edge[]): Node[] {
     }
   }
 
-  // Group nodes by level and position them
   const byLevel = new Map<number, string[]>();
   for (const [id, lvl] of level) {
     if (!byLevel.has(lvl)) byLevel.set(lvl, []);
@@ -79,14 +75,12 @@ function buildManualLayout(nodes: Node[], edges: Edge[]): Node[] {
     const y = lvl * GENERATION_GAP;
     const totalWidth = ids.length * SPOUSE_GAP;
     const startX = -totalWidth / 2 + SPOUSE_GAP / 2;
-
     ids.forEach((id, i) => {
       positioned.set(id, { x: startX + i * SPOUSE_GAP, y });
     });
     maxY = y;
   }
 
-  // Handle nodes without level (orphans)
   for (const n of nodes) {
     if (!positioned.has(n.id)) {
       maxY += GENERATION_GAP;
@@ -99,7 +93,6 @@ function buildManualLayout(nodes: Node[], edges: Edge[]): Node[] {
     const sourcePos = positioned.get(e.source);
     const targetPos = positioned.get(e.target);
     if (sourcePos && targetPos) {
-      // Place spouse to the right at the same level
       positioned.set(e.target, {
         x: sourcePos.x + SPOUSE_GAP,
         y: sourcePos.y,
@@ -131,6 +124,15 @@ export default function TreeEditorPage() {
   const [editingNode, setEditingNode] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+
+  // Person form modal
+  const [formModal, setFormModal] = useState<{
+    mode: 'addFirst' | 'addRoot' | 'addRelation';
+    relationType?: string;
+    targetNodeId?: string;
+  } | null>(null);
+  const [formName, setFormName] = useState('');
+  const [formGender, setFormGender] = useState('');
 
   const loadGraph = useCallback(async () => {
     try {
@@ -174,66 +176,6 @@ export default function TreeEditorPage() {
     loadGraph();
   }, [loadGraph]);
 
-  const addPerson = useCallback(
-    async (type: string, targetNodeId: string) => {
-      const targetNode = nodes.find((n) => n.id === targetNodeId);
-      if (!targetNode) return;
-
-      const name = prompt(`Enter name for new ${type}:`);
-      if (!name) return;
-      const gender = prompt('Gender? (male/female/skip):')?.toLowerCase() || '';
-      const validGender = ['male', 'female'].includes(gender) ? gender : '';
-
-      try {
-        // Create the new person
-        const newPerson = await persons.create({ name, treeId, gender: validGender });
-
-        // Determine relationship direction
-        let fromId = Number(targetNodeId);
-        let toId = newPerson.id;
-        let relType = type;
-
-        if (type === 'parent') {
-          // Parent goes above - create child relationship from new person to target
-          fromId = newPerson.id;
-          toId = Number(targetNodeId);
-          relType = 'parent';
-        } else if (type === 'sibling') {
-          // Find a parent of the target and add as child
-          const parentEdge = edges.find((e) => e.target === targetNodeId);
-          if (parentEdge) {
-            fromId = newPerson.id;
-            toId = Number(parentEdge.source);
-            relType = 'child';
-          } else {
-            alert('No parent found. Add a parent first.');
-            await persons.delete(newPerson.id);
-            return;
-          }
-        } else if (type === 'spouse') {
-          relType = 'spouse';
-        } else if (type === 'child') {
-          // Child: new person is child, target is parent
-          fromId = newPerson.id;
-          toId = Number(targetNodeId);
-          relType = 'child';
-        }
-
-        await relationships.create({
-          fromPersonId: fromId,
-          toPersonId: toId,
-          type: relType,
-        });
-
-        // Reload
-        loadGraph();
-      } catch (err: any) {
-        alert(err.response?.data?.message || 'Failed to add person');
-      }
-    },
-    [nodes, edges, treeId, loadGraph],
-  );
-
   const deletePerson = useCallback(
     async (nodeId: string) => {
       if (!confirm('Delete this person and all their connections?')) return;
@@ -266,36 +208,95 @@ export default function TreeEditorPage() {
       if (bounds) {
         setContextMenu({
           nodeId: node.id,
-          x: (_.clientX || bounds.left + 100),
-          y: (_.clientY || bounds.top + 100),
+          x: _.clientX || bounds.left + 100,
+          y: _.clientY || bounds.top + 100,
         });
       }
     },
     [],
   );
 
-  const addFirstPerson = async () => {
-    const name = prompt('Enter your name:');
-    if (!name) return;
-    const gender = prompt('Gender? (male/female/skip):')?.toLowerCase() || '';
+  const addFirstPerson = () => {
+    setFormName('');
+    setFormGender('');
+    setFormModal({ mode: 'addFirst' });
+  };
+
+  const addRootPerson = () => {
+    setFormName('');
+    setFormGender('');
+    setFormModal({ mode: 'addRoot' });
+  };
+
+  const openAddRelationModal = (type: string, targetNodeId: string) => {
+    setFormName('');
+    setFormGender('');
+    setFormModal({ mode: 'addRelation', relationType: type, targetNodeId });
+  };
+
+  const handleFormConfirm = async () => {
+    if (!formModal || !formName.trim()) return;
+    const mode = formModal.mode;
+    const name = formName.trim();
+    const gender = formGender;
+
     try {
-      await persons.create({ name, treeId, gender: ['male', 'female'].includes(gender) ? gender : '' });
+      const newPerson = await persons.create({ name, treeId, gender });
+
+      if (mode === 'addRelation' && formModal.targetNodeId && formModal.relationType) {
+        const type = formModal.relationType;
+        const targetNodeId = formModal.targetNodeId;
+
+        let fromId = Number(targetNodeId);
+        let toId = newPerson.id;
+        let relType = type;
+
+        if (type === 'parent') {
+          fromId = newPerson.id;
+          toId = Number(targetNodeId);
+          relType = 'parent';
+        } else if (type === 'sibling') {
+          // Find parent of the target node (check both relationship directions)
+          const parentEdge = edges.find(
+            (e) => (e.target === targetNodeId && e.label === 'parent') ||
+                   (e.source === targetNodeId && e.label === 'child')
+          );
+          if (parentEdge) {
+            const parentId = parentEdge.label === 'parent'
+              ? Number(parentEdge.source)
+              : Number(parentEdge.target);
+            fromId = newPerson.id;
+            toId = parentId;
+            relType = 'child';
+          } else {
+            alert('No parent found. Add a parent first.');
+            await persons.delete(newPerson.id);
+            setFormModal(null);
+            return;
+          }
+        } else if (type === 'spouse') {
+          relType = 'spouse';
+        } else if (type === 'child') {
+          fromId = newPerson.id;
+          toId = Number(targetNodeId);
+          relType = 'child';
+        }
+
+        await relationships.create({ fromPersonId: fromId, toPersonId: toId, type: relType });
+      }
+
+      setFormModal(null);
       loadGraph();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to create person');
+      alert(err.response?.data?.message || 'Failed');
     }
   };
 
-  const addRootPerson = async () => {
-    const name = prompt('Enter person name:');
-    if (!name) return;
-    const gender = prompt('Gender? (male/female/skip):')?.toLowerCase() || '';
-    try {
-      await persons.create({ name, treeId, gender: ['male', 'female'].includes(gender) ? gender : '' });
-      loadGraph();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to create person');
-    }
+  const getFormTitle = () => {
+    if (!formModal) return '';
+    if (formModal.mode === 'addFirst') return 'Add Yourself';
+    if (formModal.mode === 'addRoot') return 'Add Person';
+    return `Add ${formModal.relationType}`;
   };
 
   const isEmpty = !loading && nodes.length === 0;
@@ -381,7 +382,7 @@ export default function TreeEditorPage() {
                 x={contextMenu.x}
                 y={contextMenu.y}
                 onAdd={(type) => {
-                  addPerson(type, contextMenu.nodeId);
+                  openAddRelationModal(type, contextMenu.nodeId);
                   setContextMenu(null);
                 }}
                 onEdit={() => {
@@ -436,6 +437,20 @@ export default function TreeEditorPage() {
           </>
         )}
       </div>
+
+      {/* Person Form Modal */}
+      {formModal && (
+        <PersonFormModal
+          title={getFormTitle()}
+          name={formName}
+          gender={formGender}
+          onNameChange={setFormName}
+          onGenderChange={setFormGender}
+          onConfirm={handleFormConfirm}
+          onCancel={() => setFormModal(null)}
+          confirmLabel={formModal.mode === 'addRelation' ? `Add ${formModal.relationType}` : 'Add'}
+        />
+      )}
     </div>
   );
 }
