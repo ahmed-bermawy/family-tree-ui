@@ -22,6 +22,7 @@ import NodeContextMenu from '../components/NodeContextMenu';
 import PersonFormModal from '../components/PersonFormModal';
 import ShareModal from '../components/ShareModal';
 import ConfirmModal from '../components/ConfirmModal';
+import ImageCropModal from '../components/ImageCropModal';
 import Toast from '../components/Toast';
 import { toPng } from 'html-to-image';
 import { useI18n } from '../i18n/I18nContext';
@@ -168,6 +169,12 @@ export default function TreeEditorPage() {
   } | null>(null);
   const [editingNode, setEditingNode] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [editName2, setEditName2] = useState(''); // for couple second person
+  const [editIsCouple, setEditIsCouple] = useState(false);
+  const [editPerson1Id, setEditPerson1Id] = useState<number>(0);
+  const [editPerson2Id, setEditPerson2Id] = useState<number>(0);
+  const [editGender1, setEditGender1] = useState('');
+  const [editGender2, setEditGender2] = useState('');
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   // Person form modal
@@ -185,6 +192,44 @@ export default function TreeEditorPage() {
     title: string; message: string; danger?: boolean; onConfirm: () => void;
   } | null>(null);
   const [toast, setToast] = useState<{ message: string; type?: 'error' | 'success' | 'info' } | null>(null);
+
+  // Crop modal state
+  const [cropModal, setCropModal] = useState<{
+    imageUrl: string;
+    personId: number;
+  } | null>(null);
+
+  const startUpload = (personId: number) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp,image/gif';
+    input.onchange = (e: any) => {
+      const file = e.target?.files?.[0];
+      if (!file) return;
+      if (file.size > 10 * 1024 * 1024) {
+        setToast({ message: t.fileTooLarge });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        setCropModal({ imageUrl: reader.result as string, personId });
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
+
+  const handleCroppedUpload = async (blob: Blob, personId: number) => {
+    setCropModal(null);
+    try {
+      const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
+      await persons.uploadPhoto(personId, file);
+      loadGraph();
+      setToast({ message: t.photoUploaded, type: 'success' });
+    } catch {
+      setToast({ message: t.uploadFailed });
+    }
+  };
 
   const loadGraph = useCallback(async () => {
     try {
@@ -236,8 +281,8 @@ export default function TreeEditorPage() {
               type: 'coupleNode',
               position: { x: 0, y: 0 },
               data: {
-                person1: { id: String(couple.p1.id), name: couple.p1.name, gender: couple.p1.gender || '' },
-                person2: { id: String(couple.p2.id), name: couple.p2.name, gender: couple.p2.gender || '' },
+                person1: { id: String(couple.p1.id), name: couple.p1.name, gender: couple.p1.gender || '', photo: couple.p1.photo || '' },
+                person2: { id: String(couple.p2.id), name: couple.p2.name, gender: couple.p2.gender || '', photo: couple.p2.photo || '' },
                 onClick: () => {},
               },
             });
@@ -251,6 +296,7 @@ export default function TreeEditorPage() {
             data: {
               name: p.name,
               gender: p.gender,
+              photo: p.photo || '',
               onClick: () => {},
             },
           });
@@ -309,16 +355,26 @@ export default function TreeEditorPage() {
   );
 
   const renamePerson = useCallback(
-    async (nodeId: string, newName: string) => {
+    async (nodeId: string, newName: string, newName2?: string) => {
       try {
-        await persons.update(Number(nodeId), { name: newName });
+        if (nodeId.startsWith('couple-')) {
+          // Update both persons in the couple
+          if (newName.trim()) {
+            await persons.update(editPerson1Id, { name: newName.trim() });
+          }
+          if (newName2?.trim() && editPerson2Id) {
+            await persons.update(editPerson2Id, { name: newName2.trim() });
+          }
+        } else {
+          await persons.update(Number(nodeId), { name: newName.trim() });
+        }
         setEditingNode(null);
         loadGraph();
       } catch (err: any) {
         setToast({ message: err.response?.data?.message || t.failed });
       }
     },
-    [loadGraph, t],
+    [loadGraph, t, editPerson1Id, editPerson2Id],
   );
 
   const onNodeClick = useCallback(
@@ -549,7 +605,22 @@ export default function TreeEditorPage() {
                 onEdit={() => {
                   const node = nodes.find((n) => n.id === contextMenu.nodeId);
                   if (node) {
-                    setEditName((node.data as any).name || '');
+                    if (node.type === 'coupleNode') {
+                      const d = node.data as any;
+                      setEditPerson1Id(Number(d.person1?.id || 0));
+                      setEditPerson2Id(Number(d.person2?.id || 0));
+                      setEditName(d.person1?.name || '');
+                      setEditName2(d.person2?.name || '');
+                      setEditGender1(d.person1?.gender || '');
+                      setEditGender2(d.person2?.gender || '');
+                      setEditIsCouple(true);
+                    } else {
+                      setEditIsCouple(false);
+                      setEditName((node.data as any).name || '');
+                      setEditName2('');
+                      setEditPerson1Id(Number(node.id));
+                      setEditPerson2Id(0);
+                    }
                     setEditingNode(contextMenu.nodeId);
                   }
                   setContextMenu(null);
@@ -563,10 +634,10 @@ export default function TreeEditorPage() {
             )}
 
             {/* Edit Name Modal */}
-            {editingNode && (
+            {editingNode && !editIsCouple && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                 <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 sm:p-6 w-[90vw] sm:w-80">
-                  <h3 className="text-white font-semibold mb-4">{t.editName}</h3>
+                  <h3 className="text-white font-semibold mb-4">{t.edit}</h3>
                   <input
                     type="text"
                     value={editName}
@@ -575,22 +646,68 @@ export default function TreeEditorPage() {
                       if (e.key === 'Enter') renamePerson(editingNode, editName);
                       if (e.key === 'Escape') setEditingNode(null);
                     }}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white mb-4 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white mb-3 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     autoFocus
                   />
+                  <div className="flex items-center gap-2 px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-sm text-gray-400 hover:text-emerald-400 cursor-pointer transition mb-4"
+                    onClick={() => startUpload(editPerson1Id || Number(editingNode))}>
+                    <span className="text-xs">{t.uploadPhoto}</span>
+                    <span className="text-gray-600 text-[10px] ml-auto">{t.maxFileSize}</span>
+                  </div>
                   <div className="flex gap-2 justify-end">
-                    <button
-                      onClick={() => setEditingNode(null)}
-                      className="px-4 py-1.5 text-sm text-gray-400 hover:text-white transition"
-                      >
-                      {t.cancel}
-                      </button>
-                      <button
-                      onClick={() => renamePerson(editingNode, editName)}
-                      className="px-4 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition"
-                      >
-                      {t.save}
+                    <button onClick={() => setEditingNode(null)}
+                      className="px-4 py-1.5 text-sm text-gray-400 hover:text-white transition">{t.cancel}</button>
+                    <button onClick={() => renamePerson(editingNode, editName)}
+                      className="px-4 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition">{t.save}</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Edit Couple Modal */}
+            {editingNode && editIsCouple && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 sm:p-6 w-[90vw] sm:w-96 shadow-2xl">
+                  <h3 className="text-white font-semibold mb-1 text-center">{t.editCouple}</h3>
+                  <p className="text-gray-400 text-xs text-center mb-4">{t.editCoupleDesc}</p>
+
+                  {/* Person 1 */}
+                  <label className="text-gray-300 text-xs font-medium mb-1 block">
+                    {editGender1 === 'male' ? t.husband : editGender1 === 'female' ? t.wife : t.person1}
+                  </label>
+                  <div className="flex items-center gap-2 mb-2">
+                    <input type="text" value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <button onClick={() => startUpload(editPerson1Id)}
+                      className="px-2.5 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-xs text-gray-400 hover:text-emerald-400 cursor-pointer transition whitespace-nowrap"
+                      title="Upload photo">
+                      📷
                     </button>
+                  </div>
+
+                  {/* Person 2 */}
+                  <label className="text-gray-300 text-xs font-medium mb-1 block">
+                    {editGender2 === 'male' ? t.husband : editGender2 === 'female' ? t.wife : t.person2}
+                  </label>
+                  <div className="flex items-center gap-2 mb-4">
+                    <input type="text" value={editName2}
+                      onChange={(e) => setEditName2(e.target.value)}
+                      className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <button onClick={() => startUpload(editPerson2Id)}
+                      className="px-2.5 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-xs text-gray-400 hover:text-emerald-400 cursor-pointer transition whitespace-nowrap"
+                      title="Upload photo">
+                      📷
+                    </button>
+                  </div>
+
+                  <div className="flex gap-2 justify-end">
+                    <button onClick={() => setEditingNode(null)}
+                      className="px-4 py-1.5 text-sm text-gray-400 hover:text-white transition">{t.cancel}</button>
+                    <button onClick={() => renamePerson(editingNode, editName, editName2)}
+                      className="px-4 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition">{t.save}</button>
                   </div>
                 </div>
               </div>
@@ -628,7 +745,7 @@ export default function TreeEditorPage() {
           title={confirmAction.title}
           message={confirmAction.message}
           danger={confirmAction.danger}
-          confirmLabel="Delete"
+          confirmLabel={t.delete}
           cancelLabel={t.cancel}
           onConfirm={confirmAction.onConfirm}
           onCancel={() => setConfirmAction(null)}
@@ -641,6 +758,15 @@ export default function TreeEditorPage() {
           message={toast.message}
           type={toast.type || 'error'}
           onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* Image Crop Modal */}
+      {cropModal && (
+        <ImageCropModal
+          imageUrl={cropModal.imageUrl}
+          onCrop={(blob) => handleCroppedUpload(blob, cropModal.personId)}
+          onCancel={() => setCropModal(null)}
         />
       )}
     </div>

@@ -10,6 +10,7 @@ export default function PersonNode({ data }: NodeProps) {
   const d = data as Record<string, unknown>;
   const name = (d.name as string) || '';
   const gender = (d.gender as string) || '';
+  const photo = (d.photo as string) || '';
   const color = GENDER_COLORS[gender] || GENDER_COLORS.default;
   const onClick = d.onClick as (() => void) | undefined;
 
@@ -21,10 +22,12 @@ export default function PersonNode({ data }: NodeProps) {
         onClick={() => onClick?.()}
       >
         <div className="flex items-center gap-2">
-          <div
-            className={`w-8 h-8 ${color} rounded-full flex items-center justify-center text-white text-sm font-bold`}
-          >
-            {name[0]?.toUpperCase() || '?'}
+          <div className={`w-9 h-9 ${color} rounded-full flex items-center justify-center text-white text-sm font-bold ring-2 ring-gray-700 overflow-hidden flex-shrink-0`}>
+            {photo ? (
+              <img src={`http://76.13.60.23:3000${photo}`} alt={name} className="w-full h-full object-cover" />
+            ) : (
+              name[0]?.toUpperCase() || '?'
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-medium truncate">{name}</p>

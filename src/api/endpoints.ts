@@ -1,4 +1,5 @@
-import api from './client';
+import api, { API_BASE } from './client';
+import axios from 'axios';
 
 export const auth = {
   register: (data: { email: string; password: string }) =>
@@ -6,6 +7,10 @@ export const auth = {
   login: (data: { email: string; password: string }) =>
     api.post('/auth/login', data).then((r) => r.data),
   profile: () => api.get('/auth/profile').then((r) => r.data),
+  forgotPassword: (email: string) =>
+    api.post('/auth/forgot-password', { email }).then((r) => r.data),
+  resetPassword: (token: string, password: string) =>
+    api.post(`/auth/reset-password/${token}`, { password }).then((r) => r.data),
 };
 
 export const trees = {
@@ -26,6 +31,13 @@ export const persons = {
   delete: (id: number) => api.delete(`/persons/${id}`).then((r) => r.data),
   listByTree: (treeId: number) =>
     api.get(`/persons/tree/${treeId}`).then((r) => r.data),
+  uploadPhoto: (personId: number, file: File) => {
+    const form = new FormData();
+    form.append('photo', file);
+    return axios.post(`${API_BASE}/upload/${personId}`, form, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    }).then((r) => r.data);
+  },
 };
 
 export const relationships = {

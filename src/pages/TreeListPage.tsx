@@ -146,7 +146,7 @@ export default function TreeListPage() {
           title="🗑️ Delete Tree"
           message={t.deleteTreeConfirm}
           danger
-          confirmLabel="Delete"
+          confirmLabel={t.delete}
           cancelLabel={t.cancel}
           onConfirm={confirmDeleteTree}
           onCancel={() => setDeleteTarget(null)}
