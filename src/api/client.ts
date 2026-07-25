@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = 'http://76.13.60.23:3000';
+const API_BASE = 'https://family-tree-api.bermawy.tech';
 
 const api = axios.create({
   baseURL: API_BASE,

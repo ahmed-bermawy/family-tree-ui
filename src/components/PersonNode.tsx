@@ -24,7 +24,7 @@ export default function PersonNode({ data }: NodeProps) {
         <div className="flex items-center gap-2">
           <div className={`w-9 h-9 ${color} rounded-full flex items-center justify-center text-white text-sm font-bold ring-2 ring-gray-700 overflow-hidden flex-shrink-0`}>
             {photo ? (
-              <img src={`http://76.13.60.23:3000${photo}`} alt={name} className="w-full h-full object-cover" />
+              <img src={`https://family-tree-api.bermawy.tech${photo}`} alt={name} className="w-full h-full object-cover" />
             ) : (
               name[0]?.toUpperCase() || '?'
             )}

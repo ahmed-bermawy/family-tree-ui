@@ -18,7 +18,7 @@ export default function ShareViewPage() {
   const { t } = useI18n();
 
   useEffect(() => {
-    fetch(`http://76.13.60.23:3000/trees/share/${id}`)
+    fetch(`https://family-tree-api.bermawy.tech/trees/share/${id}`)
       .then((r) => {
         if (!r.ok) throw new Error('Tree not found');
         return r.json();

@@ -6,7 +6,7 @@ const GENDER_COLORS: Record<string, string> = {
   default: 'bg-emerald-500',
 };
 
-const API = 'http://76.13.60.23:3000';
+const API = 'https://family-tree-api.bermawy.tech';
 
 export default function CoupleNode({ data }: NodeProps) {
   const d = data as Record<string, unknown>;
