@@ -28,8 +28,18 @@ jobs:
         with:
           switches: -avzr --delete
           path: ./dist/
-          remote_user: ${{ secrets.FT_UI_USER }}
-          remote_host: ${{ secrets.FT_UI_HOST }}
-          remote_port: ${{ secrets.FT_UI_PORT }}
-          remote_key: ${{ secrets.FT_UI_SSH_KEY }}
-          remote_path: ${{ secrets.FT_UI_PATH }}
+          remote_user: ${{ secrets.PROD_USER }}
+          remote_host: ${{ secrets.PROD_HOST }}
+          remote_port: ${{ secrets.PROD_PORT }}
+          remote_key: ${{ secrets.PROD_SSH_KEY }}
+          remote_path: ${{ secrets.PROD_UI_PATH }}
+
+      - name: Post-deploy (restart)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          port: ${{ secrets.PROD_PORT }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            pm2 restart family-tree-ui-prod --update-env
