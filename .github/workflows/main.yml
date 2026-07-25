@@ -1,0 +1,48 @@
+name: CI/CD - Frontend UI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy dist via rsync
+        uses: burnett01/rsync-deployments@7.0.2
+        with:
+          switches: -avzr --delete
+          path: ./dist/
+          remote_user: ${{ secrets.FT_UI_USER }}
+          remote_host: ${{ secrets.FT_UI_HOST }}
+          remote_port: ${{ secrets.FT_UI_PORT }}
+          remote_key: ${{ secrets.FT_UI_SSH_KEY }}
+          remote_path: ${{ secrets.FT_UI_PATH }}
+
+      - name: Post-deploy (restart if needed)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.FT_UI_HOST }}
+          username: ${{ secrets.FT_UI_USER }}
+          port: ${{ secrets.FT_UI_PORT }}
+          key: ${{ secrets.FT_UI_SSH_KEY }}
+          script: |
+            cd ${{ secrets.FT_UI_PATH }}
+            if command -v pm2 &> /dev/null; then
+              pm2 restart family-tree-ui --update-env || pm2 start ./node_modules/.bin/serve dist --name family-tree-ui -l 5173 --spa
+            fi
