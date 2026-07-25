@@ -33,16 +33,3 @@ jobs:
           remote_port: ${{ secrets.FT_UI_PORT }}
           remote_key: ${{ secrets.FT_UI_SSH_KEY }}
           remote_path: ${{ secrets.FT_UI_PATH }}
-
-      - name: Post-deploy (restart if needed)
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.FT_UI_HOST }}
-          username: ${{ secrets.FT_UI_USER }}
-          port: ${{ secrets.FT_UI_PORT }}
-          key: ${{ secrets.FT_UI_SSH_KEY }}
-          script: |
-            cd ${{ secrets.FT_UI_PATH }}
-            if command -v pm2 &> /dev/null; then
-              pm2 restart family-tree-ui --update-env || pm2 start ./node_modules/.bin/serve dist --name family-tree-ui -l 5173 --spa
-            fi
