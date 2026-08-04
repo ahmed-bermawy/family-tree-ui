@@ -19,9 +19,9 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          # Source-only payload (~500KB): no node_modules, no dist, no .git
-          for i in 1 2 3 4 5; do
-            echo "--- rsync attempt $i/5 ---"
+          # Retry with backoff: GitHub runner IPs occasionally get dropped by provider network
+          for i in 1 2 3 4 5 6 7 8; do
+            echo "--- rsync attempt $i/8 ---"
             if rsync -avz --delete \
               --exclude=node_modules --exclude=dist --exclude=.git \
               -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 -p ${{ secrets.PROD_PORT }}" \
@@ -29,10 +29,10 @@ jobs:
               echo "rsync OK"
               exit 0
             fi
-            echo "rsync failed, retrying in 10s..."
-            sleep 10
+            echo "rsync failed, retrying in $((i * 10))s..."
+            sleep $((i * 10))
           done
-          echo "rsync failed after 5 attempts"
+          echo "rsync failed after 8 attempts"
           exit 1
 
       - name: Build & restart on server
@@ -46,4 +46,7 @@ jobs:
             cd ${{ secrets.PROD_UI_PATH }}
             npm ci 2>&1 | tail -2
             npm run build 2>&1 | tail -3
-            pm2 restart family-tree-ui-prod --update-env
+            # serve is a dependency now, but keep the global binary as fallback
+            command -v serve >/dev/null 2>&1 || npm install -g serve 2>&1 | tail -1
+            pm2 restart family-tree-ui-prod --update-env || \
+              pm2 start /usr/bin/serve --name family-tree-ui-prod -- -l 5173 -s ${{ secrets.PROD_UI_PATH }}/dist
