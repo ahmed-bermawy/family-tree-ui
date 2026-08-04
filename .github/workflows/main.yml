@@ -20,21 +20,10 @@ jobs:
           echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           # Source-only payload (~500KB): no node_modules, no dist, no .git
-          # Build scratch dir lives OUTSIDE the served folder
-          for i in 1 2 3 4 5 6 7 8; do
-            echo "--- rsync attempt $i/8 ---"
-            if rsync -avz --delete \
-              --exclude=node_modules --exclude=dist --exclude=.git \
-              -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 -p ${{ secrets.PROD_PORT }}" \
-              ./ "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:/home/production/family-tree-ui-build/"; then
-              echo "rsync OK"
-              exit 0
-            fi
-            echo "rsync failed, retrying in $((i * 10))s..."
-            sleep $((i * 10))
-          done
-          echo "rsync failed after 8 attempts"
-          exit 1
+          rsync -avz --delete \
+            --exclude=node_modules --exclude=dist --exclude=.git \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 -p ${{ secrets.PROD_PORT }}" \
+            ./ "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:/home/production/family-tree-ui-build/"
 
       - name: Build & deploy on server
         uses: appleboy/ssh-action@v1.0.3
