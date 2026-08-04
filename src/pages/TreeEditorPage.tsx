@@ -354,8 +354,12 @@ export default function TreeEditorPage() {
         onConfirm: async () => {
           setConfirmAction(null);
           try {
-            // Delete both persons (relationships cascade on the server)
-            await Promise.all(personIds.map((id) => persons.delete(id)));
+            // Single call — server cascades to children & grandchildren
+            if (personIds.length === 1) {
+              await persons.delete(personIds[0]);
+            } else {
+              await persons.batchDelete(personIds);
+            }
             loadGraph();
           } catch (err: any) {
             setToast({ message: err.response?.data?.message || t.failed });

@@ -45,6 +45,8 @@ export const persons = {
   update: (id: number, data: any) =>
     api.patch(`/persons/${id}`, data).then((r) => r.data),
   delete: (id: number) => api.delete(`/persons/${id}`).then((r) => r.data),
+  batchDelete: (ids: number[]) =>
+    api.post('/persons/batch-delete', { ids }).then((r) => r.data),
   listByTree: (treeId: number) =>
     api.get(`/persons/tree/${treeId}`).then((r) => r.data),
   uploadPhoto: (personId: number, file: File) => {
