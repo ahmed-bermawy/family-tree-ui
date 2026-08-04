@@ -25,12 +25,22 @@ jobs:
 
       - name: Deploy dist via rsync
         run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq rsync
           mkdir -p ~/.ssh
           echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          rsync -avzr --delete \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p ${{ secrets.PROD_PORT }}" \
-            ./dist/ ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_UI_PATH }}/
+          for i in 1 2 3 4 5; do
+            echo "--- rsync attempt $i/5 ---"
+            if rsync -avzr --delete -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 -p ${{ secrets.PROD_PORT }}" ./dist/ "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_UI_PATH }}/"; then
+              echo "rsync OK"
+              exit 0
+            fi
+            echo "rsync failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "rsync failed after 5 attempts"
+          exit 1
 
       - name: Post-deploy (restart)
         uses: appleboy/ssh-action@v1.0.3
