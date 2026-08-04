@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { trees } from '../api/endpoints';
-import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import ConfirmModal from '../components/ConfirmModal';
+import Footer from '../components/Footer';
+import UserMenu from '../components/UserMenu';
 
 interface Tree {
   id: number;
@@ -16,7 +17,6 @@ export default function TreeListPage() {
   const [newName, setNewName] = useState('');
   const [nameError, setNameError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
-  const { user, logout } = useAuth();
   const { t, toggleLang } = useI18n();
   const navigate = useNavigate();
 
@@ -52,7 +52,7 @@ export default function TreeListPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-emerald-950 to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-emerald-950 to-gray-900 flex flex-col">
       <nav className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <h1 className="text-xl font-bold text-white">🌳 {t.appName}</h1>
@@ -60,10 +60,7 @@ export default function TreeListPage() {
             <button onClick={toggleLang} className="text-xs text-gray-500 hover:text-emerald-400 transition">
               {t.langSwitch}
             </button>
-            <span className="text-gray-400 text-sm">{user?.email}</span>
-            <button onClick={logout} className="text-sm text-gray-400 hover:text-red-400 transition">
-              {t.logout}
-            </button>
+            <UserMenu />
           </div>
         </div>
       </nav>
@@ -152,6 +149,8 @@ export default function TreeListPage() {
           onCancel={() => setDeleteTarget(null)}
         />
       )}
+
+      <Footer />
     </div>
   );
 }

@@ -1,12 +1,11 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { resolveImageUrl } from '../api/imageUrl';
 
 const GENDER_COLORS: Record<string, string> = {
   male: 'bg-blue-500',
   female: 'bg-pink-500',
   default: 'bg-emerald-500',
 };
-
-const API = 'https://family-tree-api.bermawy.tech';
 
 export default function CoupleNode({ data }: NodeProps) {
   const d = data as Record<string, unknown>;
@@ -19,7 +18,7 @@ export default function CoupleNode({ data }: NodeProps) {
   const Avatar = ({ person, color }: { person: typeof person1; color: string }) => (
     <div className={`w-9 h-9 ${color} rounded-full flex items-center justify-center text-white text-sm font-bold ring-2 ring-gray-700 overflow-hidden flex-shrink-0`}>
       {person.photo ? (
-        <img src={`${API}${person.photo}`} alt={person.name} className="w-full h-full object-cover" />
+        <img src={resolveImageUrl(person.photo)} alt={person.name} className="w-full h-full object-cover" />
       ) : (
         person.name?.[0]?.toUpperCase() || '?'
       )}

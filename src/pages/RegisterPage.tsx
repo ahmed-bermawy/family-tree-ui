@@ -3,8 +3,10 @@ import { useNavigate, Link } from 'react-router-dom';
 import { auth } from '../api/endpoints';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n/I18nContext';
+import Footer from '../components/Footer';
 
 export default function RegisterPage() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,7 +18,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
     try {
-      const res = await auth.register({ email, password });
+      const res = await auth.register({ email, password, name: name.trim() || undefined });
       localStorage.setItem('token', res.access_token);
       const profile = await auth.profile();
       login(res.access_token, profile);
@@ -27,7 +29,8 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-emerald-950 to-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-emerald-950 to-gray-900 flex flex-col">
+    <div className="flex-1 flex items-center justify-center p-4">
       <div className="bg-gray-800/60 backdrop-blur-lg border border-gray-700 rounded-2xl p-8 w-full max-w-md shadow-2xl">
         <div className="flex justify-end mb-2">
           <button onClick={toggleLang} className="text-xs text-gray-500 hover:text-emerald-400 transition">
@@ -38,6 +41,16 @@ export default function RegisterPage() {
         <p className="text-gray-400 text-center mb-8">{t.createAccount}</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-gray-300 text-sm block mb-1">{t.name}</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+              placeholder={t.namePlaceholder}
+            />
+          </div>
           <div>
             <label className="text-gray-300 text-sm block mb-1">{t.email}</label>
             <input
@@ -83,6 +96,8 @@ export default function RegisterPage() {
           </Link>
         </p>
       </div>
+    </div>
+    <Footer />
     </div>
   );
 }

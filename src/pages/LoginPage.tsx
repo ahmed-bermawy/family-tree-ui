@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { auth } from '../api/endpoints';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n/I18nContext';
+import Footer from '../components/Footer';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -27,7 +28,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-emerald-950 to-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-emerald-950 to-gray-900 flex flex-col">
+    <div className="flex-1 flex items-center justify-center p-4">
       <div className="bg-gray-800/60 backdrop-blur-lg border border-gray-700 rounded-2xl p-8 w-full max-w-md shadow-2xl">
         <div className="flex justify-end mb-2">
           <button onClick={toggleLang} className="text-xs text-gray-500 hover:text-emerald-400 transition">
@@ -90,6 +92,8 @@ export default function LoginPage() {
           </Link>
         </p>
       </div>
+    </div>
+    <Footer />
     </div>
   );
 }

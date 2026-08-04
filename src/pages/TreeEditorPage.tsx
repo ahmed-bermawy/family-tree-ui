@@ -15,7 +15,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import { trees, persons, relationships } from '../api/endpoints';
-import { useAuth } from '../context/AuthContext';
+import UserMenu from '../components/UserMenu';
 import PersonNode from '../components/PersonNode';
 import CoupleNode from '../components/CoupleNode';
 import NodeContextMenu from '../components/NodeContextMenu';
@@ -152,7 +152,6 @@ function buildManualLayout(nodes: Node[], edges: Edge[]): Node[] {
 export default function TreeEditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { logout, user } = useAuth();
   const { t, toggleLang } = useI18n();
   const treeId = Number(id);
 
@@ -532,10 +531,7 @@ export default function TreeEditorPage() {
               </button>
             </>
           )}
-          <span className="text-[10px] sm:text-xs text-gray-500 hidden sm:inline ml-1">{user?.email}</span>
-          <button onClick={logout} className="text-[10px] sm:text-xs text-gray-500 hover:text-red-400 transition whitespace-nowrap">
-            {t.logout}
-          </button>
+          <UserMenu />
         </div>
       </nav>
 

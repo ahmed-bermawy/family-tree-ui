@@ -4,7 +4,9 @@ import { ReactFlow, Background, Controls, type Node, type Edge, MarkerType } fro
 import '@xyflow/react/dist/style.css';
 import PersonNode from '../components/PersonNode';
 import CoupleNode from '../components/CoupleNode';
+import { API_BASE } from '../api/client';
 import { useI18n } from '../i18n/I18nContext';
+import Footer from '../components/Footer';
 
 const nodeTypes = { personNode: PersonNode, coupleNode: CoupleNode };
 
@@ -18,7 +20,7 @@ export default function ShareViewPage() {
   const { t } = useI18n();
 
   useEffect(() => {
-    fetch(`https://family-tree-api.bermawy.tech/trees/share/${id}`)
+    fetch(`${API_BASE}/trees/share/${id}`)
       .then((r) => {
         if (!r.ok) throw new Error('Tree not found');
         return r.json();
@@ -182,7 +184,7 @@ export default function ShareViewPage() {
           {t.buildYourOwn}
         </Link>
       </nav>
-      <div className="flex-1">
+      <div className="flex-1 overflow-hidden">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -198,6 +200,7 @@ export default function ShareViewPage() {
           <Controls className="!bg-gray-800 !border-gray-700" />
         </ReactFlow>
       </div>
+      <Footer />
     </div>
   );
 }

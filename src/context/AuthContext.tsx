@@ -4,6 +4,9 @@ import api from '../api/client';
 interface User {
   id: number;
   email: string;
+  role?: string;
+  name?: string | null;
+  avatarUrl?: string | null;
 }
 
 interface AuthContextType {
@@ -11,6 +14,8 @@ interface AuthContextType {
   token: string | null;
   login: (token: string, user: User) => void;
   logout: () => void;
+  refreshUser: () => Promise<void>;
+  setUser: (user: User) => void;
   isLoading: boolean;
 }
 
@@ -48,8 +53,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const refreshUser = async () => {
+    if (!token) return;
+    try {
+      const r = await api.get('/auth/profile');
+      setUser(r.data);
+    } catch {}
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, refreshUser, setUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

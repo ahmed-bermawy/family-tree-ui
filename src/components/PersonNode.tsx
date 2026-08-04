@@ -1,4 +1,5 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { resolveImageUrl } from '../api/imageUrl';
 
 const GENDER_COLORS: Record<string, string> = {
   male: 'bg-blue-500',
@@ -24,7 +25,7 @@ export default function PersonNode({ data }: NodeProps) {
         <div className="flex items-center gap-2">
           <div className={`w-9 h-9 ${color} rounded-full flex items-center justify-center text-white text-sm font-bold ring-2 ring-gray-700 overflow-hidden flex-shrink-0`}>
             {photo ? (
-              <img src={`https://family-tree-api.bermawy.tech${photo}`} alt={name} className="w-full h-full object-cover" />
+              <img src={resolveImageUrl(photo)} alt={name} className="w-full h-full object-cover" />
             ) : (
               name[0]?.toUpperCase() || '?'
             )}

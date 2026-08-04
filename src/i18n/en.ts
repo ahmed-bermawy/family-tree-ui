@@ -117,6 +117,48 @@ export const en = {
   // Language
   language: 'English',
   langSwitch: 'العربية',
+  tagline: 'Build & share your family history',
+  version: 'Version',
+  changelog: 'Changelog',
+
+  // Feedback
+  feedbackTitle: 'We\'d Love to Hear From You 💬',
+  feedbackTitleShort: 'Feedback',
+  feedbackDesc: 'Your feedback helps us grow. Found a bug, have a feature idea, or just want to say hello? Drop us a message — we read every single one and reply as fast as we can.',
+  feedbackName: 'Your Name',
+  feedbackNamePlaceholder: 'What should we call you?',
+  feedbackEmail: 'Your Email',
+  feedbackSubject: 'Subject',
+  feedbackSubjectPlaceholder: 'What is it about?',
+  feedbackMessage: 'Message',
+  feedbackMessagePlaceholder: 'Tell us everything...',
+  feedbackImage: 'Attach an image (optional)',
+  feedbackImagePlaceholder: 'Click to attach a screenshot or photo',
+  feedbackSend: 'Send Feedback',
+  feedbackOnlyImages: 'Only images are allowed (jpg, png, webp, gif)',
+  feedbackMaxSize: 'Image must be under 10 MB',
+  feedbackRequired: 'Please fill in your name, email, subject and message',
+  feedbackFailed: 'Something went wrong. Please try again.',
+  feedbackThanks: 'Thank You! 💚',
+  feedbackThanksDesc: 'Your feedback has been sent. We\'ll get back to you as soon as possible.',
+
+  // Profile
+  profileTitle: 'My Profile',
+  profilePhoto: 'Profile Photo',
+  profileChangePhoto: 'Change Photo',
+  profileInfo: 'Profile Information',
+  profileSaveInfo: 'Save Changes',
+  profileNameRequired: 'Please enter your name',
+  profileEmailInvalid: 'Please enter a valid email',
+  profileSaved: 'Profile updated successfully',
+  profilePassword: 'Change Password',
+  profileCurrentPassword: 'Current Password',
+  profileNewPassword: 'New Password',
+  profileConfirmPassword: 'Confirm New Password',
+  profileUpdatePassword: 'Update Password',
+  profilePasswordShort: 'Password must be at least 6 characters',
+  profilePasswordMismatch: 'Passwords do not match',
+  profilePasswordSaved: 'Password updated successfully',
 };
 
 export type Translations = typeof en;

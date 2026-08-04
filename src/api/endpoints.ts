@@ -2,15 +2,31 @@ import api, { API_BASE } from './client';
 import axios from 'axios';
 
 export const auth = {
-  register: (data: { email: string; password: string }) =>
+  register: (data: { email: string; password: string; name?: string }) =>
     api.post('/auth/register', data).then((r) => r.data),
   login: (data: { email: string; password: string }) =>
     api.post('/auth/login', data).then((r) => r.data),
   profile: () => api.get('/auth/profile').then((r) => r.data),
+  updateProfile: (data: { name?: string; email?: string }) =>
+    api.patch('/auth/profile', data).then((r) => r.data),
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    api.patch('/auth/profile/password', data).then((r) => r.data),
+  uploadAvatar: (formData: FormData) =>
+    api.post('/auth/profile/avatar', formData, {
+      headers: { 'Content-Type': undefined },
+    }).then((r) => r.data),
   forgotPassword: (email: string) =>
     api.post('/auth/forgot-password', { email }).then((r) => r.data),
   resetPassword: (token: string, password: string) =>
     api.post(`/auth/reset-password/${token}`, { password }).then((r) => r.data),
+};
+
+export const feedback = {
+  send: (formData: FormData) =>
+    api.post('/feedback', formData, {
+      // Let the browser set the multipart boundary automatically
+      headers: { 'Content-Type': undefined },
+    }).then((r) => r.data),
 };
 
 export const trees = {
