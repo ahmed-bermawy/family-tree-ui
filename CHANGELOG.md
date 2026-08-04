@@ -22,8 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Admins management (add/edit/delete admins, change passwords)
   - Analytics (page views, daily chart, top pages, unique visitors)
   - Feedback management (priority, done/archive/delete, image lightbox)
-- 👁️ View tracking on every page (SPA route-aware, public `POST /track`)
-- 💬 Public feedback page with optional image upload → emailed to ahmed@bermawy.tech
 - 👤 Profile page: edit name/email, change password, round-crop avatar upload
 - 📦 Version `v1.0.0` in footer (injected from package.json at build time)
 - 🗄️ Separate staging (`family_tree_db_staging`) and production databases
