@@ -19,13 +19,14 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          # Retry with backoff: GitHub runner IPs occasionally get dropped by provider network
+          # Source-only payload (~500KB): no node_modules, no dist, no .git
+          # Build scratch dir lives OUTSIDE the served folder
           for i in 1 2 3 4 5 6 7 8; do
             echo "--- rsync attempt $i/8 ---"
             if rsync -avz --delete \
               --exclude=node_modules --exclude=dist --exclude=.git \
               -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 -p ${{ secrets.PROD_PORT }}" \
-              ./ "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_UI_PATH }}"; then
+              ./ "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:/home/production/family-tree-ui-build/"; then
               echo "rsync OK"
               exit 0
             fi
@@ -35,7 +36,7 @@ jobs:
           echo "rsync failed after 8 attempts"
           exit 1
 
-      - name: Build & restart on server
+      - name: Build & deploy on server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.PROD_HOST }}
@@ -43,10 +44,11 @@ jobs:
           port: ${{ secrets.PROD_PORT }}
           key: ${{ secrets.PROD_SSH_KEY }}
           script: |
-            cd ${{ secrets.PROD_UI_PATH }}
+            cd /home/production/family-tree-ui-build
             npm ci 2>&1 | tail -2
             npm run build 2>&1 | tail -3
-            # serve is a dependency now, but keep the global binary as fallback
+            # Copy built assets into the served folder (PROD_UI_PATH = .../dist)
+            rsync -a --delete /home/production/family-tree-ui-build/dist/ ${{ secrets.PROD_UI_PATH }}/
             command -v serve >/dev/null 2>&1 || npm install -g serve 2>&1 | tail -1
             pm2 restart family-tree-ui-prod --update-env || \
-              pm2 start /usr/bin/serve --name family-tree-ui-prod -- -l 5173 -s ${{ secrets.PROD_UI_PATH }}/dist
+              pm2 start /usr/bin/serve --name family-tree-ui-prod -- -l 5173 -s ${{ secrets.PROD_UI_PATH }}
