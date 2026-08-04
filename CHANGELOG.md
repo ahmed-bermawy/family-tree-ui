@@ -5,6 +5,20 @@ All notable changes to the Family Tree application will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-08-04
+
+### Added
+- 🗑️ **Cascade delete** — deleting a person/couple now removes their children & grandchildren (with their spouses), so no orphaned nodes remain. Confirmation shows a couple-specific message.
+- 👪 Couple nodes are deleted as a whole (both spouses) in a single batch call.
+
+### Changed
+- CI/CD: replaced deprecated `burnett01/rsync-deployments` action with native rsync + `appleboy/ssh-action` (fixes intermittent deploy failures)
+- CI/CD: Prisma client regenerated on the server after every deploy
+
+### Fixed
+- Deleting a couple node sent `couple-N` as the person ID → "Validation failed (numeric string is expected)". Now resolves to the real person IDs.
+- Children of a deleted couple were left as orphaned, unconnected nodes.
+
 ## [1.0.0] - 2026-08-04
 
 ### Added
@@ -22,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Admins management (add/edit/delete admins, change passwords)
   - Analytics (page views, daily chart, top pages, unique visitors)
   - Feedback management (priority, done/archive/delete, image lightbox)
+- 👁️ View tracking on every page (SPA route-aware, public `POST /track`)
+- 💬 Public feedback page with optional image upload → emailed to ahmed@bermawy.tech
 - 👤 Profile page: edit name/email, change password, round-crop avatar upload
 - 📦 Version `v1.0.0` in footer (injected from package.json at build time)
 - 🗄️ Separate staging (`family_tree_db_staging`) and production databases
