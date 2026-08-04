@@ -88,6 +88,7 @@ export const ar: Translations = {
   copyLink: 'نسخ الرابط',
   deletePerson: '🗑️ حذف',
   deletePersonConfirm: 'هل تريد حذف هذا الشخص وجميع علاقاته؟',
+  deleteCoupleConfirm: 'هل تريد حذف هذا الزوجين وجميع علاقاتهما؟',
 
   // Share modal
   shareTitle: 'شارك شجرة عائلتك',

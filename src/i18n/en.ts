@@ -86,6 +86,7 @@ export const en = {
   copyLink: 'Copy Link',
   deletePerson: '🗑️ Delete',
   deletePersonConfirm: 'Delete this person and all their connections?',
+  deleteCoupleConfirm: 'Delete this couple and all their connections?',
 
   // Share modal
   shareTitle: 'Share Your Family Tree',

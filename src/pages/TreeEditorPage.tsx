@@ -335,14 +335,27 @@ export default function TreeEditorPage() {
 
   const deletePerson = useCallback(
     async (nodeId: string) => {
+      // Resolve couple node to its two underlying persons
+      const node = nodes.find((n) => n.id === nodeId);
+      let personIds: number[] = [];
+      if (node?.type === 'coupleNode') {
+        const d = node.data as any;
+        personIds = [Number(d.person1?.id), Number(d.person2?.id)].filter((n) => !isNaN(n));
+      } else {
+        const n = Number(nodeId);
+        if (!isNaN(n)) personIds = [n];
+      }
+      if (personIds.length === 0) return;
+
       setConfirmAction({
         title: '🗑️ ' + (t.deletePersonConfirm?.split('?')[0] || ''),
-        message: t.deletePersonConfirm,
+        message: personIds.length > 1 ? t.deleteCoupleConfirm || t.deletePersonConfirm : t.deletePersonConfirm,
         danger: true,
         onConfirm: async () => {
           setConfirmAction(null);
           try {
-            await persons.delete(Number(nodeId));
+            // Delete both persons (relationships cascade on the server)
+            await Promise.all(personIds.map((id) => persons.delete(id)));
             loadGraph();
           } catch (err: any) {
             setToast({ message: err.response?.data?.message || t.failed });
@@ -350,7 +363,7 @@ export default function TreeEditorPage() {
         },
       });
     },
-    [loadGraph, t],
+    [loadGraph, nodes, t],
   );
 
   const renamePerson = useCallback(
