@@ -71,7 +71,7 @@ export const en = {
   forgotPassword: 'Forgot Password',
   forgotDesc: 'Enter your email and we\'ll send you a reset link',
   sendResetLink: 'Send Reset Link',
-  resetLinkSent: 'Reset link generated!',
+  resetLinkSent: 'Reset link sent to your email. Please check your inbox.',
   yourResetLink: 'Your reset link (click to open):',
   backToLogin: '← Back to Login',
   resetPassword: 'Reset Password',

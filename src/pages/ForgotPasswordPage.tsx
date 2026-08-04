@@ -6,7 +6,6 @@ import { useI18n } from '../i18n/I18nContext';
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
-  const [resetLink, setResetLink] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { t } = useI18n();
@@ -17,9 +16,8 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await auth.forgotPassword(email);
+      await auth.forgotPassword(email);
       setSent(true);
-      if (res.resetLink) setResetLink(res.resetLink);
     } catch (err: any) {
       setError(err.response?.data?.message || t.failed);
     } finally {
@@ -38,9 +36,6 @@ export default function ForgotPasswordPage() {
 
         {!sent ? (
           <form onSubmit={handleSubmit}>
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mb-4 text-xs text-yellow-400">
-              📢 {t.noEmailNotice}
-            </div>
             <input
               type="email"
               value={email}
@@ -61,25 +56,7 @@ export default function ForgotPasswordPage() {
         ) : (
           <div className="text-center">
             <div className="text-3xl mb-3">✅</div>
-            <p className="text-emerald-400 font-semibold mb-1">{t.resetLinkSent}</p>
-            <p className="text-gray-400 text-xs mb-4">{t.noEmailNotice}</p>
-            {resetLink && (
-              <div className="bg-gray-700/50 border border-emerald-600/50 rounded-xl p-4 mb-4">
-                <p className="text-gray-400 text-xs mb-2">{t.yourResetLink}</p>
-                <a
-                  href={resetLink}
-                  className="text-emerald-400 text-sm font-mono break-all hover:text-emerald-300 transition block bg-gray-800 rounded-lg p-3 border border-gray-600"
-                >
-                  {resetLink}
-                </a>
-                <button
-                  onClick={() => { navigator.clipboard?.writeText(resetLink); }}
-                  className="mt-2 text-xs text-gray-500 hover:text-emerald-400 transition"
-                >
-                  📋 {t.copyLink}
-                </button>
-              </div>
-            )}
+            <p className="text-emerald-400 font-semibold mb-4">{t.resetLinkSent}</p>
             <Link to="/login" className="text-emerald-400 hover:text-emerald-300 text-sm transition block mt-2">{t.backToLogin}</Link>
           </div>
         )}
