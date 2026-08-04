@@ -12,27 +12,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-
-      - name: Deploy dist via rsync
+      - name: Deploy source via rsync (build happens on server)
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq rsync
           mkdir -p ~/.ssh
           echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          # Source-only payload (~500KB): no node_modules, no dist, no .git
           for i in 1 2 3 4 5; do
             echo "--- rsync attempt $i/5 ---"
-            if rsync -avzr --delete -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 -p ${{ secrets.PROD_PORT }}" ./dist/ "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_UI_PATH }}/"; then
+            if rsync -avz --delete \
+              --exclude=node_modules --exclude=dist --exclude=.git \
+              -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 -p ${{ secrets.PROD_PORT }}" \
+              ./ "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_UI_PATH }}"; then
               echo "rsync OK"
               exit 0
             fi
@@ -42,7 +35,7 @@ jobs:
           echo "rsync failed after 5 attempts"
           exit 1
 
-      - name: Post-deploy (restart)
+      - name: Build & restart on server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.PROD_HOST }}
@@ -50,4 +43,7 @@ jobs:
           port: ${{ secrets.PROD_PORT }}
           key: ${{ secrets.PROD_SSH_KEY }}
           script: |
+            cd ${{ secrets.PROD_UI_PATH }}
+            npm ci 2>&1 | tail -2
+            npm run build 2>&1 | tail -3
             pm2 restart family-tree-ui-prod --update-env
