@@ -26,6 +26,7 @@ import ImageCropModal from '../components/ImageCropModal';
 import Toast from '../components/Toast';
 import { toPng } from 'html-to-image';
 import { useI18n } from '../i18n/I18nContext';
+import { resolveDeletePersonIds } from '../utils/deleteResolution';
 
 const nodeTypes = { personNode: PersonNode, coupleNode: CoupleNode };
 
@@ -336,15 +337,7 @@ export default function TreeEditorPage() {
   const deletePerson = useCallback(
     async (nodeId: string) => {
       // Resolve couple node to its two underlying persons
-      const node = nodes.find((n) => n.id === nodeId);
-      let personIds: number[] = [];
-      if (node?.type === 'coupleNode') {
-        const d = node.data as any;
-        personIds = [Number(d.person1?.id), Number(d.person2?.id)].filter((n) => !isNaN(n));
-      } else {
-        const n = Number(nodeId);
-        if (!isNaN(n)) personIds = [n];
-      }
+      const personIds = resolveDeletePersonIds(nodeId, nodes);
       if (personIds.length === 0) return;
 
       setConfirmAction({
