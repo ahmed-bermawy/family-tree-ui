@@ -4,8 +4,13 @@ import { auth } from '../api/endpoints';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import Footer from '../components/Footer';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export default function RegisterPage() {
+  usePageMeta(
+    'Create Account — Family Tree',
+    'Create a free account to build your family tree, add photos and connect relatives.',
+  );
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

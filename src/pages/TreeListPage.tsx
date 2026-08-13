@@ -17,6 +17,9 @@ export default function TreeListPage() {
   const [newName, setNewName] = useState('');
   const [nameError, setNameError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+  const [renameTarget, setRenameTarget] = useState<Tree | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameError, setRenameError] = useState('');
   const { t, toggleLang } = useI18n();
   const navigate = useNavigate();
 
@@ -48,6 +51,25 @@ export default function TreeListPage() {
     if (deleteTarget === null) return;
     await trees.delete(deleteTarget);
     setDeleteTarget(null);
+    loadTrees();
+  };
+
+  const openRename = (tree: Tree) => {
+    setRenameTarget(tree);
+    setRenameValue(tree.name);
+    setRenameError('');
+  };
+
+  const confirmRenameTree = async () => {
+    if (renameTarget === null) return;
+    const name = renameValue.trim();
+    if (!name) {
+      setRenameError('Please enter a name for your family tree');
+      return;
+    }
+    setRenameError('');
+    await trees.update(renameTarget.id, { name });
+    setRenameTarget(null);
     loadTrees();
   };
 
@@ -119,6 +141,13 @@ export default function TreeListPage() {
                     {t.open}
                   </button>
                   <button
+                    onClick={() => openRename(tree)}
+                    className="px-3 py-1.5 bg-yellow-600/20 text-yellow-400 rounded-lg text-sm hover:bg-yellow-600/30 transition"
+                    title={t.rename}
+                  >
+                    ✏️ {t.rename}
+                  </button>
+                  <button
                     onClick={() => deleteTree(tree.id)}
                     className="px-3 py-1.5 bg-red-600/20 text-red-400 rounded-lg text-sm hover:bg-red-600/30 transition"
                   >
@@ -148,6 +177,44 @@ export default function TreeListPage() {
           onConfirm={confirmDeleteTree}
           onCancel={() => setDeleteTarget(null)}
         />
+      )}
+
+      {/* Rename Modal */}
+      {renameTarget !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setRenameTarget(null)}>
+          <div
+            className="bg-gray-800 border border-gray-700 rounded-xl p-6 w-full max-w-sm shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-white text-center mb-2">✏️ {t.renameTree}</h3>
+            <input
+              type="text"
+              value={renameValue}
+              autoFocus
+              onChange={(e) => { setRenameValue(e.target.value); setRenameError(''); }}
+              onKeyDown={(e) => e.key === 'Enter' && confirmRenameTree()}
+              placeholder={t.renamePlaceholder}
+              className={`w-full px-4 py-2.5 bg-gray-700 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 transition mb-2 ${
+                renameError ? 'border-red-500' : 'border-gray-600'
+              }`}
+            />
+            {renameError && <p className="text-red-400 text-sm mb-2">⚠️ {renameError}</p>}
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={confirmRenameTree}
+                className="flex-1 px-4 py-2.5 bg-yellow-600 hover:bg-yellow-500 text-white font-semibold rounded-lg transition cursor-pointer"
+              >
+                {t.rename}
+              </button>
+              <button
+                onClick={() => setRenameTarget(null)}
+                className="flex-1 px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold rounded-lg transition cursor-pointer"
+              >
+                {t.cancel}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <Footer />

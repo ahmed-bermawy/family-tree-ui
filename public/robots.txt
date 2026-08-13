@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /trees
+Disallow: /profile
+
+Sitemap: https://family-tree.bermawy.tech/sitemap.xml

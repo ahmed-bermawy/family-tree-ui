@@ -4,8 +4,13 @@ import { auth } from '../api/endpoints';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import Footer from '../components/Footer';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export default function LoginPage() {
+  usePageMeta(
+    'Login — Family Tree',
+    'Sign in to your family tree. Manage your relatives, photos and shared links.',
+  );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');

@@ -114,6 +114,9 @@ export const en = {
   printFailed: 'Could not generate image. Try taking a screenshot manually.',
   shareCopied: 'Share link copied!',
   deleteTreeConfirm: 'Are you sure you want to delete this tree?',
+  rename: 'Rename',
+  renameTree: 'Rename Family Tree',
+  renamePlaceholder: 'Enter a new name for your family tree',
 
   // Language
   language: 'English',

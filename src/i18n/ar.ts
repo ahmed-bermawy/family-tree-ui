@@ -116,6 +116,9 @@ export const ar: Translations = {
   printFailed: 'تعذر إنشاء الصورة. حاول أخذ لقطة شاشة.',
   shareCopied: 'تم نسخ رابط المشاركة!',
   deleteTreeConfirm: 'هل أنت متأكد أنك تريد حذف هذه الشجرة؟',
+  rename: 'إعادة تسمية',
+  renameTree: 'إعادة تسمية شجرة العائلة',
+  renamePlaceholder: 'أدخل اسماً جديداً لشجرة العائلة',
 
   // Language
   language: 'العربية',

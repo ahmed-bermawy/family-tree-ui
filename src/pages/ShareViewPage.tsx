@@ -7,6 +7,7 @@ import CoupleNode from '../components/CoupleNode';
 import { API_BASE } from '../api/client';
 import { useI18n } from '../i18n/I18nContext';
 import Footer from '../components/Footer';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const nodeTypes = { personNode: PersonNode, coupleNode: CoupleNode };
 
@@ -15,9 +16,19 @@ export default function ShareViewPage() {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [treeName, setTreeName] = useState('');
+  const [personCount, setPersonCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { t } = useI18n();
+
+  // SEO: dynamic title/description once the tree loads.
+  // Default (while loading) points at the public tree viewer.
+  usePageMeta(
+    treeName ? `${treeName} — Family Tree` : 'Shared Family Tree — Family Tree',
+    treeName
+      ? `${treeName}: a family tree with ${personCount} people. View it online for free.`
+      : 'View a shared family tree online for free.',
+  );
 
   useEffect(() => {
     fetch(`${API_BASE}/trees/share/${id}`)
@@ -27,6 +38,7 @@ export default function ShareViewPage() {
       })
       .then((graph) => {
         setTreeName(graph.tree.name);
+        setPersonCount(graph.nodes?.length || 0);
 
         // Group spouses into couples
         const spouseEdges = graph.edges.filter((e: any) => e.type === 'spouse');

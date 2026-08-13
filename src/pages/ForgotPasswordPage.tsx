@@ -2,8 +2,13 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { auth } from '../api/endpoints';
 import { useI18n } from '../i18n/I18nContext';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export default function ForgotPasswordPage() {
+  usePageMeta(
+    'Reset Password — Family Tree',
+    'Reset your family tree account password securely via email.',
+  );
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');

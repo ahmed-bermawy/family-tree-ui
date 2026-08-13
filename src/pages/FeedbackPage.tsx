@@ -3,10 +3,15 @@ import { Link } from 'react-router-dom';
 import { feedback } from '../api/endpoints';
 import { useI18n } from '../i18n/I18nContext';
 import Footer from '../components/Footer';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 export default function FeedbackPage() {
+  usePageMeta(
+    'Feedback — Family Tree',
+    'Send us your feedback, suggestions or bug reports for the Family Tree app.',
+  );
   const { t, toggleLang } = useI18n();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

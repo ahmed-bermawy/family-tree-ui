@@ -5,6 +5,15 @@ All notable changes to the Family Tree application will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-08-04
+
+### Added
+- 🔍 **SEO support** — meta description, Open Graph + Twitter Card tags, JSON-LD structured data, canonical URL, `robots.txt` and `sitemap.xml`
+- 📄 Per-page titles & descriptions (login, register, reset password, feedback)
+- 🌳 **Dynamic share-page SEO** — shared tree links show the tree name + person count in search results and chat previews (WhatsApp/Telegram/Facebook)
+- ✏️ **Rename family tree** — each tree card now has a Rename action with a custom modal (pre-filled name, Enter to save, validation); uses the existing `PATCH /trees/:id` endpoint
+- 🌐 `rename`, `renameTree`, `renamePlaceholder` i18n keys (EN + AR)
+
 ## [1.1.0] - 2026-08-04
 
 ### Added

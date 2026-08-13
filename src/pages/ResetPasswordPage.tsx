@@ -3,8 +3,13 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { auth } from '../api/endpoints';
 import { useI18n } from '../i18n/I18nContext';
 import { useAuth } from '../context/AuthContext';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export default function ResetPasswordPage() {
+  usePageMeta(
+    'Set New Password — Family Tree',
+    'Set a new password for your family tree account.',
+  );
   const { token } = useParams();
   const { t } = useI18n();
   const { login } = useAuth();
