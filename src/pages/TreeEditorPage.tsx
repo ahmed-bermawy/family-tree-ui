@@ -3,10 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ReactFlow,
   Background,
-  Controls,
   MiniMap,
   useNodesState,
   useEdgesState,
+  useReactFlow,
+  getNodesBounds,
   type Node,
   type Edge,
   SelectionMode,
@@ -20,13 +21,16 @@ import PersonNode from '../components/PersonNode';
 import CoupleNode from '../components/CoupleNode';
 import NodeContextMenu from '../components/NodeContextMenu';
 import PersonFormModal from '../components/PersonFormModal';
+import LinkPersonModal from '../components/LinkPersonModal';
+import TreeToolbar from '../components/TreeToolbar';
 import ShareModal from '../components/ShareModal';
 import ConfirmModal from '../components/ConfirmModal';
 import ImageCropModal from '../components/ImageCropModal';
 import Toast from '../components/Toast';
-import { toPng } from 'html-to-image';
+import { toCanvas } from 'html-to-image';
 import { useI18n } from '../i18n/I18nContext';
 import { resolveDeletePersonIds } from '../utils/deleteResolution';
+import { isValidName, stripDigits } from '../utils/nameValidation';
 
 const nodeTypes = { personNode: PersonNode, coupleNode: CoupleNode };
 
@@ -158,6 +162,7 @@ export default function TreeEditorPage() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const { getViewport } = useReactFlow();
   const [treeName, setTreeName] = useState('');
   const [shareCode, setShareCode] = useState('');
   const [loading, setLoading] = useState(true);
@@ -186,6 +191,13 @@ export default function TreeEditorPage() {
   const [formName, setFormName] = useState('');
   const [formGender, setFormGender] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
+
+  // Link existing person modal
+  const [linkModal, setLinkModal] = useState<{
+    targetNodeId: string;
+    targetName: string;
+    persons: { id: number; name: string }[];
+  } | null>(null);
 
   // Confirm and toast state
   const [confirmAction, setConfirmAction] = useState<{
@@ -365,17 +377,28 @@ export default function TreeEditorPage() {
 
   const renamePerson = useCallback(
     async (nodeId: string, newName: string, newName2?: string) => {
+      const name1 = stripDigits(newName.trim());
+      const name2 = newName2 ? stripDigits(newName2.trim()) : '';
+      // Validate names before saving
+      if (!name1 || !isValidName(name1)) {
+        setToast({ message: t.nameInvalidChars });
+        return;
+      }
+      if (nodeId.startsWith('couple-') && newName2?.trim() && (!name2 || !isValidName(name2))) {
+        setToast({ message: t.nameInvalidChars });
+        return;
+      }
       try {
         if (nodeId.startsWith('couple-')) {
           // Update both persons in the couple
-          if (newName.trim()) {
-            await persons.update(editPerson1Id, { name: newName.trim() });
+          if (name1) {
+            await persons.update(editPerson1Id, { name: name1 });
           }
-          if (newName2?.trim() && editPerson2Id) {
-            await persons.update(editPerson2Id, { name: newName2.trim() });
+          if (name2 && editPerson2Id) {
+            await persons.update(editPerson2Id, { name: name2 });
           }
         } else {
-          await persons.update(Number(nodeId), { name: newName.trim() });
+          await persons.update(Number(nodeId), { name: name1 });
         }
         setEditingNode(null);
         loadGraph();
@@ -416,6 +439,105 @@ export default function TreeEditorPage() {
     setFormModal({ mode: 'addRelation', relationType: type, targetNodeId });
   };
 
+  // Build the list of other people in the tree for linking
+  const openLinkModal = (targetNodeId: string) => {
+    const targetPersonId = resolvePersonId(targetNodeId);
+    let targetName = '';
+    const seen = new Set<number>();
+    const persons: { id: number; name: string }[] = [];
+    nodes.forEach((n) => {
+      const d = n.data as any;
+      const entries: [number, string][] = [];
+      if (n.type === 'coupleNode') {
+        if (d?.person1?.id) entries.push([Number(d.person1.id), d.person1.name || '']);
+        if (d?.person2?.id) entries.push([Number(d.person2.id), d.person2.name || '']);
+      } else {
+        entries.push([Number(n.id), d?.name || '']);
+      }
+      entries.forEach(([id, name]) => {
+        if (id === targetPersonId && !targetName) targetName = name;
+        if (id !== targetPersonId && !seen.has(id)) {
+          seen.add(id);
+          persons.push({ id, name });
+        }
+      });
+    });
+    setLinkModal({ targetNodeId, targetName, persons });
+  };
+
+  const confirmLink = async (personId: number, relationType: string) => {
+    if (!linkModal) return;
+    const targetNodeId = linkModal.targetNodeId;
+    const targetPersonId = resolvePersonId(targetNodeId);
+
+    let fromId = personId; // selected person from the list
+    let toId = targetPersonId; // the person that was right-clicked
+    let relType = relationType;
+
+    if (relationType === 'child') {
+      // Selected person becomes the CHILD of the right-clicked person
+      fromId = personId;
+      toId = targetPersonId;
+      relType = 'child';
+    } else if (relationType === 'parent') {
+      // Selected person becomes the PARENT of the right-clicked person
+      fromId = personId;
+      toId = targetPersonId;
+      relType = 'parent';
+    } else if (relationType === 'sibling') {
+      // Target person (e.g. ياسمين) becomes a sibling of the SELECTED person (e.g. ola):
+      // link the target as a child of the selected person's parent(s)
+      const selectedNodeId = findNodeIdForPerson(personId);
+      const parentEdges = edges.filter((e) => e.target === selectedNodeId);
+      if (parentEdges.length === 0) {
+        setToast({ message: t.noParentFound });
+        setLinkModal(null);
+        return;
+      }
+      // Collect all parents of the selected person (couple nodes contribute both spouses)
+      const parentIds = new Set<number>();
+      parentEdges.forEach((pe) => {
+        const src = pe.source;
+        if (src.startsWith('couple-')) {
+          const coupleNode = nodes.find((n) => n.id === src);
+          const d = coupleNode?.data as any;
+          if (d?.person1?.id) parentIds.add(Number(d.person1.id));
+          if (d?.person2?.id) parentIds.add(Number(d.person2.id));
+        } else {
+          parentIds.add(resolvePersonId(src));
+        }
+      });
+      if (parentIds.size === 0) {
+        setToast({ message: t.noParentFound });
+        setLinkModal(null);
+        return;
+      }
+      // Link the target person as a child of every parent (inherits all parents)
+      for (const parentId of parentIds) {
+        await relationships.create({
+          fromPersonId: targetPersonId,
+          toPersonId: parentId,
+          type: 'child',
+        });
+      }
+      setLinkModal(null);
+      loadGraph();
+      setToast({ message: t.relationAdded, type: 'success' });
+      return;
+    }
+
+    try {
+      await relationships.create({ fromPersonId: fromId, toPersonId: toId, type: relType });
+      setLinkModal(null);
+      loadGraph();
+      setToast({ message: t.relationAdded, type: 'success' });
+    } catch (err: any) {
+      setToast({
+        message: translateServerError(err.response?.data?.message || t.failed),
+      });
+    }
+  };
+
   // Resolve a node ID (may be couple-0 etc) to a real person ID
   const resolvePersonId = (nodeId: string): number => {
     if (nodeId.startsWith('couple-')) {
@@ -428,6 +550,32 @@ export default function TreeEditorPage() {
     }
     return Number(nodeId);
   };
+
+  // Resolve a person ID back to its node ID (handles couple nodes)
+  const findNodeIdForPerson = (personId: number): string => {
+    const coupleNode = nodes.find((n) => {
+      if (n.type !== 'coupleNode') return false;
+      const d = n.data as any;
+      return Number(d.person1?.id) === personId || Number(d.person2?.id) === personId;
+    });
+    return coupleNode ? coupleNode.id : String(personId);
+  };
+
+  // Map known server error messages to localized text
+  const translateServerError = useCallback(
+    (msg: string): string => {
+      if (!msg) return t.failed;
+      const map: Record<string, string> = {
+        'This person already has a father': t.hasFather,
+        'This person already has a mother': t.hasMother,
+        'This person already has two fathers': t.hasTwoFathers,
+        'This person already has two mothers': t.hasTwoMothers,
+        'This person already has a spouse': t.hasSpouse,
+      };
+      return map[msg] || msg;
+    },
+    [t],
+  );
 
   const handleFormConfirm = async () => {
     if (!formModal || !formName.trim()) return;
@@ -480,7 +628,9 @@ export default function TreeEditorPage() {
       setFormModal(null);
       loadGraph();
     } catch (err: any) {
-      setToast({ message: err.response?.data?.message || t.failed });
+      setToast({
+        message: translateServerError(err.response?.data?.message || t.failed),
+      });
     }
   };
 
@@ -494,11 +644,71 @@ export default function TreeEditorPage() {
   const isEmpty = !loading && nodes.length === 0;
 
   const handlePrint = async () => {
-    // Capture the full React Flow wrapper
-    const el = reactFlowWrapper.current;
-    if (!el) return;
+    // Export ONLY the tree (no navbar/toolbar/minimap), at high quality.
+    // Captures the whole tree even if it extends beyond the visible viewport.
+    const wrapper = reactFlowWrapper.current;
+    const flowEl = wrapper?.querySelector<HTMLElement>('.react-flow');
+    if (!flowEl || nodes.length === 0) return;
     try {
-      const dataUrl = await toPng(el, { backgroundColor: '#111827', pixelRatio: 2 });
+      // Bounds of the tree in flow coordinates
+      const bounds = getNodesBounds(nodes);
+      if (bounds.width === 0 || bounds.height === 0) {
+        setToast({ message: t.printFailed });
+        return;
+      }
+      const viewport = getViewport();
+      const PAD = 60; // px padding around the tree in output
+      const PIXEL_RATIO = 3; // high quality export
+
+      // Convert flow bounds → screen coordinates using current viewport
+      const screenX = bounds.x * viewport.zoom + viewport.x;
+      const screenY = bounds.y * viewport.zoom + viewport.y;
+      const screenW = bounds.width * viewport.zoom;
+      const screenH = bounds.height * viewport.zoom;
+
+      // Render the whole React Flow element (includes everything currently visible)
+      const canvas = await toCanvas(flowEl, {
+        backgroundColor: '#111827',
+        pixelRatio: PIXEL_RATIO,
+        filter: (node) => {
+          // Skip UI overlays that are NOT part of the tree
+          const cls = node.classList;
+          if (!cls) return true;
+          return !(
+            cls.contains('react-flow__minimap') ||
+            cls.contains('react-flow__panel') ||
+            cls.contains('react-flow__controls') ||
+            cls.contains('react-flow__attribution')
+          );
+        },
+      });
+
+      // Crop the canvas to exactly the tree bounds (+ padding)
+      const cropW = Math.round((screenW + PAD * 2) * PIXEL_RATIO);
+      const cropH = Math.round((screenH + PAD * 2) * PIXEL_RATIO);
+      const out = document.createElement('canvas');
+      out.width = cropW;
+      out.height = cropH;
+      const ctx = out.getContext('2d');
+      if (!ctx) {
+        setToast({ message: t.printFailed });
+        return;
+      }
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(0, 0, cropW, cropH);
+      ctx.drawImage(
+        canvas,
+        Math.round((screenX - PAD) * PIXEL_RATIO),
+        Math.round((screenY - PAD) * PIXEL_RATIO),
+        cropW,
+        cropH,
+        0,
+        0,
+        cropW,
+        cropH,
+      );
+
+      const dataUrl = out.toDataURL('image/png');
       const link = document.createElement('a');
       link.download = `${treeName || 'family-tree'}.png`;
       link.href = dataUrl;
@@ -583,12 +793,14 @@ export default function TreeEditorPage() {
               }}
             >
               <Background color="#374151" gap={20} />
-              <Controls className="!bg-gray-800 !border-gray-700" />
               <MiniMap
                 className="!bg-gray-800 !border-gray-700 hidden md:block"
                 nodeColor={(n) => (n.data?.gender === 'female' ? '#ec4899' : '#3b82f6')}
               />
             </ReactFlow>
+
+            {/* View Toolbar */}
+            <TreeToolbar wrapperRef={reactFlowWrapper} />
 
             {/* Floating Add Button */}
             <button
@@ -606,6 +818,10 @@ export default function TreeEditorPage() {
                 y={contextMenu.y}
                 onAdd={(type) => {
                   openAddRelationModal(type, contextMenu.nodeId);
+                  setContextMenu(null);
+                }}
+                onLink={() => {
+                  openLinkModal(contextMenu.nodeId);
                   setContextMenu(null);
                 }}
                 onEdit={() => {
@@ -733,6 +949,17 @@ export default function TreeEditorPage() {
           onConfirm={handleFormConfirm}
           onCancel={() => setFormModal(null)}
           confirmLabel={formModal.mode === 'addRelation' ? `${t.add} ${formModal.relationType}` : t.add}
+        />
+      )}
+
+      {/* Link Existing Person Modal */}
+      {linkModal && (
+        <LinkPersonModal
+          title={t.linkPerson.replace(/^[^\s]+\s/, '')}
+          targetName={linkModal.targetName}
+          persons={linkModal.persons}
+          onLink={confirmLink}
+          onCancel={() => setLinkModal(null)}
         />
       )}
 

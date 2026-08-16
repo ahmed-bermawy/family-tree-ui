@@ -5,6 +5,7 @@ import { useI18n } from '../i18n/I18nContext';
 import ConfirmModal from '../components/ConfirmModal';
 import Footer from '../components/Footer';
 import UserMenu from '../components/UserMenu';
+import { isValidName, stripDigits } from '../utils/nameValidation';
 
 interface Tree {
   id: number;
@@ -33,12 +34,17 @@ export default function TreeListPage() {
   }, []);
 
   const createTree = async () => {
-    if (!newName.trim()) {
-      setNameError('Please enter a name for your family tree');
+    const name = stripDigits(newName.trim());
+    if (!name) {
+      setNameError(t.nameRequired);
+      return;
+    }
+    if (!isValidName(name)) {
+      setNameError(t.nameInvalidChars);
       return;
     }
     setNameError('');
-    const tree = await trees.create(newName.trim());
+    const tree = await trees.create(name);
     setNewName('');
     navigate(`/trees/${tree.id}`);
   };
@@ -62,9 +68,13 @@ export default function TreeListPage() {
 
   const confirmRenameTree = async () => {
     if (renameTarget === null) return;
-    const name = renameValue.trim();
+    const name = stripDigits(renameValue.trim());
     if (!name) {
-      setRenameError('Please enter a name for your family tree');
+      setRenameError(t.nameRequired);
+      return;
+    }
+    if (!isValidName(name)) {
+      setRenameError(t.nameInvalidChars);
       return;
     }
     setRenameError('');

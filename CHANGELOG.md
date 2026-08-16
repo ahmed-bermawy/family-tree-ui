@@ -5,6 +5,26 @@ All notable changes to the Family Tree application will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-08-16
+
+### Added
+- 🔗 **Link Existing Person** — right-click a node → "Link Existing Person" to connect someone already in the tree as a spouse, child, parent or sibling (no need to re-type them). The modal shows a live preview of the relationship direction ("Tamer will become a child of Mohamed")
+  - **Add Child** = the person picked from the list becomes the child of the person you clicked; **Add Parent** is the reverse (user-defined semantics)
+  - **Sibling inheritance** — linking someone as a sibling of a person with two parents links them to **both** parents automatically (e.g. ياسمين becomes a daughter of Mohamed **and** Amina)
+- 🛠️ **View toolbar** — top-center control bar: zoom in / zoom out / fit to screen / center tree / reset view / full screen (EN + AR labels, aria-labels for accessibility)
+- 🖼️ **High-quality tree export** — the Print button now exports **only the tree** (no navbar, toolbar, minimap or UI chrome) at 3× pixel ratio, cropped exactly to the tree bounds with padding — works for trees larger than the visible viewport
+- ✅ **Name validation** — name fields (add person, edit person, tree create/rename) accept letters only (Arabic + Latin + spaces/dots/hyphens/apostrophes):
+  - Digits are stripped live as you type or paste
+  - Invalid characters show a clear localized error message (EN + AR)
+  - Server-side `@Matches` validation on persons + trees endpoints as a final guard
+
+### Changed
+- Removed the default React Flow `<Controls>` (replaced by the new toolbar)
+
+### Fixed
+- Sibling linking errored with "No parent found" when the **selected** person had parents but the right-clicked one didn't — now resolves parents from the person who actually has them
+- `ReactFlowProvider` was missing, which could break viewport access on the editor page
+
 ## [1.2.0] - 2026-08-04
 
 ### Added

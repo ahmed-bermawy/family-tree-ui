@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { useI18n } from '../i18n/I18nContext';
+import { isValidName, stripDigits } from '../utils/nameValidation';
 
 interface Props {
   title: string;
@@ -16,6 +18,30 @@ export default function PersonFormModal({
   onConfirm, onCancel, confirmLabel,
 }: Props) {
   const { t } = useI18n();
+  const [nameError, setNameError] = useState('');
+
+  const handleNameChange = (val: string) => {
+    // Strip digits live (typing or pasting)
+    const cleaned = stripDigits(val);
+    onNameChange(cleaned);
+    if (cleaned.trim() && !isValidName(cleaned)) {
+      setNameError(t.nameInvalidChars);
+    } else {
+      setNameError('');
+    }
+  };
+
+  const handleConfirm = () => {
+    if (!name.trim()) {
+      setNameError(t.nameRequired);
+      return;
+    }
+    if (!isValidName(name)) {
+      setNameError(t.nameInvalidChars);
+      return;
+    }
+    onConfirm();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -30,12 +56,16 @@ export default function PersonFormModal({
         <input
           type="text"
           value={name}
-          onChange={(e) => onNameChange(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && name.trim() && onConfirm()}
-          className="w-full px-3.5 py-2.5 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition mb-4"
+          onChange={(e) => handleNameChange(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleConfirm()}
+          className={`w-full px-3.5 py-2.5 bg-gray-700/50 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition mb-1 ${
+            nameError ? 'border-red-500' : 'border-gray-600'
+          }`}
           placeholder={t.namePlaceholder}
           autoFocus
         />
+        {nameError && <p className="text-red-400 text-xs mb-3">⚠️ {nameError}</p>}
+        {!nameError && <p className="text-gray-600 text-[10px] mb-3">{t.nameHint}</p>}
 
         <label className="text-gray-300 text-xs font-medium mb-1.5 block">{t.genderTitle}</label>
         <div className="flex gap-3 mb-6">
@@ -79,7 +109,7 @@ export default function PersonFormModal({
             {t.cancel}
           </button>
           <button
-            onClick={onConfirm}
+            onClick={handleConfirm}
             disabled={!name.trim()}
             className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-500 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
           >

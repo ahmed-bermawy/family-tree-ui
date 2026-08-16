@@ -4,12 +4,13 @@ interface Props {
   x: number;
   y: number;
   onAdd: (type: string) => void;
+  onLink: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onClose: () => void;
 }
 
-export default function NodeContextMenu({ x, y, onAdd, onEdit, onDelete, onClose }: Props) {
+export default function NodeContextMenu({ x, y, onAdd, onLink, onEdit, onDelete, onClose }: Props) {
   const { t } = useI18n();
 
   const options = [
@@ -17,6 +18,7 @@ export default function NodeContextMenu({ x, y, onAdd, onEdit, onDelete, onClose
     { label: t.addChild, action: () => onAdd('child') },
     { label: t.addParent, action: () => onAdd('parent') },
     { label: t.addSibling, action: () => onAdd('sibling') },
+    { label: t.linkPerson, action: onLink },
     { label: t.edit, action: onEdit },
     { label: t.deletePerson, action: onDelete, danger: true },
   ];
