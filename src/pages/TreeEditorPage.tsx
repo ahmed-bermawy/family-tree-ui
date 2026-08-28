@@ -390,15 +390,15 @@ export default function TreeEditorPage() {
       }
       try {
         if (nodeId.startsWith('couple-')) {
-          // Update both persons in the couple
+          // Update both persons in the couple (name + gender)
           if (name1) {
-            await persons.update(editPerson1Id, { name: name1 });
+            await persons.update(editPerson1Id, { name: name1, gender: editGender1 || undefined });
           }
           if (name2 && editPerson2Id) {
-            await persons.update(editPerson2Id, { name: name2 });
+            await persons.update(editPerson2Id, { name: name2, gender: editGender2 || undefined });
           }
         } else {
-          await persons.update(Number(nodeId), { name: name1 });
+          await persons.update(Number(nodeId), { name: name1, gender: editGender1 || undefined });
         }
         setEditingNode(null);
         loadGraph();
@@ -406,7 +406,7 @@ export default function TreeEditorPage() {
         setToast({ message: err.response?.data?.message || t.failed });
       }
     },
-    [loadGraph, t, editPerson1Id, editPerson2Id],
+    [loadGraph, t, editPerson1Id, editPerson2Id, editGender1, editGender2],
   );
 
   const onNodeClick = useCallback(
@@ -840,6 +840,8 @@ export default function TreeEditorPage() {
                       setEditIsCouple(false);
                       setEditName((node.data as any).name || '');
                       setEditName2('');
+                      setEditGender1((node.data as any).gender || '');
+                      setEditGender2('');
                       setEditPerson1Id(Number(node.id));
                       setEditPerson2Id(0);
                     }
@@ -871,6 +873,33 @@ export default function TreeEditorPage() {
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white mb-3 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     autoFocus
                   />
+
+                  {/* Gender selector */}
+                  <label className="text-gray-300 text-xs font-medium mb-1.5 block">{t.genderTitle}</label>
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setEditGender1('male')}
+                      className={`flex-1 px-3 py-2 rounded-lg text-sm border transition-all ${
+                        editGender1 === 'male'
+                          ? 'bg-blue-600/30 border-blue-500 text-blue-300 font-semibold'
+                          : 'bg-gray-700/50 border-gray-600 text-gray-400 hover:border-gray-500'
+                      }`}
+                    >
+                      {t.male}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditGender1('female')}
+                      className={`flex-1 px-3 py-2 rounded-lg text-sm border transition-all ${
+                        editGender1 === 'female'
+                          ? 'bg-pink-600/30 border-pink-500 text-pink-300 font-semibold'
+                          : 'bg-gray-700/50 border-gray-600 text-gray-400 hover:border-gray-500'
+                      }`}
+                    >
+                      {t.female}
+                    </button>
+                  </div>
                   <div className="flex items-center gap-2 px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-sm text-gray-400 hover:text-emerald-400 cursor-pointer transition mb-4"
                     onClick={() => startUpload(editPerson1Id || Number(editingNode))}>
                     <span className="text-xs">{t.uploadPhoto}</span>
@@ -908,12 +937,36 @@ export default function TreeEditorPage() {
                       📷
                     </button>
                   </div>
+                  <div className="flex gap-2 mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setEditGender1('male')}
+                      className={`flex-1 px-3 py-1.5 rounded-lg text-xs border transition-all ${
+                        editGender1 === 'male'
+                          ? 'bg-blue-600/30 border-blue-500 text-blue-300 font-semibold'
+                          : 'bg-gray-700/50 border-gray-600 text-gray-400 hover:border-gray-500'
+                      }`}
+                    >
+                      {t.male}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditGender1('female')}
+                      className={`flex-1 px-3 py-1.5 rounded-lg text-xs border transition-all ${
+                        editGender1 === 'female'
+                          ? 'bg-pink-600/30 border-pink-500 text-pink-300 font-semibold'
+                          : 'bg-gray-700/50 border-gray-600 text-gray-400 hover:border-gray-500'
+                      }`}
+                    >
+                      {t.female}
+                    </button>
+                  </div>
 
                   {/* Person 2 */}
                   <label className="text-gray-300 text-xs font-medium mb-1 block">
                     {editGender2 === 'male' ? t.husband : editGender2 === 'female' ? t.wife : t.person2}
                   </label>
-                  <div className="flex items-center gap-2 mb-4">
+                  <div className="flex items-center gap-2 mb-2">
                     <input type="text" value={editName2}
                       onChange={(e) => setEditName2(e.target.value)}
                       className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -922,6 +975,30 @@ export default function TreeEditorPage() {
                       className="px-2.5 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-xs text-gray-400 hover:text-emerald-400 cursor-pointer transition whitespace-nowrap"
                       title="Upload photo">
                       📷
+                    </button>
+                  </div>
+                  <div className="flex gap-2 mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setEditGender2('male')}
+                      className={`flex-1 px-3 py-1.5 rounded-lg text-xs border transition-all ${
+                        editGender2 === 'male'
+                          ? 'bg-blue-600/30 border-blue-500 text-blue-300 font-semibold'
+                          : 'bg-gray-700/50 border-gray-600 text-gray-400 hover:border-gray-500'
+                      }`}
+                    >
+                      {t.male}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditGender2('female')}
+                      className={`flex-1 px-3 py-1.5 rounded-lg text-xs border transition-all ${
+                        editGender2 === 'female'
+                          ? 'bg-pink-600/30 border-pink-500 text-pink-300 font-semibold'
+                          : 'bg-gray-700/50 border-gray-600 text-gray-400 hover:border-gray-500'
+                      }`}
+                    >
+                      {t.female}
                     </button>
                   </div>
 
