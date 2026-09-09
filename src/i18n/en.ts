@@ -191,6 +191,55 @@ export const en = {
   profilePasswordShort: 'Password must be at least 6 characters',
   profilePasswordMismatch: 'Passwords do not match',
   profilePasswordSaved: 'Password updated successfully',
+
+  // Features page
+  features: 'Features',
+  featuresTitle: 'Everything you can do with your family tree',
+  featuresDesc: 'Build, organize, and share your family history — all in one place. Here is everything Family Tree lets you do.',
+  featuresGetStarted: 'Get Started Free',
+  featuresLearnMore: 'Learn more',
+  featuresTryIt: 'Try it now',
+
+  // Sections
+  featBuildTitle: '🌱 Build your tree',
+  featBuildDesc: 'Start from yourself and grow your tree generation by generation.',
+  featBuild1: 'Add people with name, gender and photo',
+  featBuild2: 'Connect relatives: spouse, child, parent or sibling',
+  featBuild3: 'Link two people who are already in the tree — no retyping',
+  featBuild4: 'Live preview shows who will become whose child/parent before you confirm',
+
+  featOrganizeTitle: '🗂️ Organize & edit',
+  featOrganizeDesc: 'Keep every family member up to date.',
+  featOrganize1: 'Edit name, gender or photo at any time',
+  featOrganize2: 'Upload a photo and crop it to fit perfectly',
+  featOrganize3: 'Clear validation: a person can have one father, one mother and one spouse',
+  featOrganize4: 'Name fields accept letters only (Arabic & English), numbers are blocked',
+
+  featViewTitle: '🔍 Explore your tree',
+  featViewDesc: 'Move around your tree however you like.',
+  featView1: 'Pan, zoom in and zoom out freely',
+  featView2: 'Fit the whole tree to your screen with one click',
+  featView3: 'Center the tree, reset the view, or go full screen',
+  featView4: 'Mini-map shows you where you are in a large tree',
+
+  featShareTitle: '🔗 Share with family',
+  featShareDesc: 'Your family history deserves to be shared.',
+  featShare1: 'Get a private share link for your tree',
+  featShare2: 'Family members view the tree without an account',
+  featShare3: 'Shared pages show the tree name in search & chat previews',
+
+  featExportTitle: '🖼️ Export & print',
+  featExportDesc: 'Save your tree as a keepsake.',
+  featExport1: 'Download a high-resolution image of the tree only — no menus or buttons',
+  featExport2: 'Even large trees export cleanly, cropped with padding',
+  featExport3: 'Print a paper copy anytime',
+
+  featManageTitle: '🗃️ Manage everything',
+  featManageDesc: 'Full control over your family data.',
+  featManage1: 'Create multiple family trees (your side, your partner\'s side...)',
+  featManage2: 'Rename or delete a tree anytime',
+  featManage3: 'Safe cascade delete — removes children & grandchildren cleanly',
+  featManage4: 'Your data stays private and secure',
 };
 
 export type Translations = typeof en;

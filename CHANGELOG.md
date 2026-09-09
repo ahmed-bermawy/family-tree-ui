@@ -5,6 +5,20 @@ All notable changes to the Family Tree application will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-08-16
+
+### Added
+- ✨ **Features page** (`/features`) — a public, bilingual (EN + AR, full RTL) showcase of everything the app lets you do:
+  - 🌱 Build your tree — add people, connect relatives (spouse/child/parent/sibling), link existing people, live relationship preview
+  - 🗂️ Organize & edit — edit name/gender/photo, crop photos, one-father/mother/spouse validation, letters-only names
+  - 🔍 Explore — pan/zoom, fit to screen, center, reset, full screen, mini-map
+  - 🔗 Share — private share link, view without account, SEO-ready shared pages
+  - 🖼️ Export & print — high-res tree-only image export, print
+  - 🗃️ Manage — multiple trees, rename/delete, safe cascade delete, private data
+- Footer link to `/features` (next to Feedback) on every page
+- `usePageMeta` SEO title/description for the features page
+- ~55 new i18n keys (EN + AR) covering the features page
+
 ## [1.3.1] - 2026-08-16
 
 ### Added

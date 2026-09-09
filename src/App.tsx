@@ -12,6 +12,7 @@ import ShareViewPage from './pages/ShareViewPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import FeedbackPage from './pages/FeedbackPage';
+import FeaturesPage from './pages/FeaturesPage';
 import ProfilePage from './pages/ProfilePage';
 import ViewTracker from './components/ViewTracker';
 
@@ -30,6 +31,7 @@ export default function App() {
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
               <Route path="/feedback" element={<FeedbackPage />} />
+              <Route path="/features" element={<FeaturesPage />} />
               <Route
                 path="/trees"
                 element={
