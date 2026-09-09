@@ -5,6 +5,11 @@ All notable changes to the Family Tree application will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-08-16
+
+### Changed
+- ✨ Features page now checks auth state: logged-in users see an **"Open My Trees"** button (→ `/trees`) instead of the Sign In / Get Started CTAs (both in the hero and bottom CTA sections). New `featuresOpenTrees` i18n key (EN + AR).
+
 ## [1.4.0] - 2026-08-16
 
 ### Added

@@ -197,6 +197,7 @@ export const en = {
   featuresTitle: 'Everything you can do with your family tree',
   featuresDesc: 'Build, organize, and share your family history — all in one place. Here is everything Family Tree lets you do.',
   featuresGetStarted: 'Get Started Free',
+  featuresOpenTrees: 'Open My Trees',
   featuresLearnMore: 'Learn more',
   featuresTryIt: 'Try it now',
 

@@ -199,6 +199,7 @@ export const ar: Translations = {
   featuresTitle: 'كل اللي تقدر تعمله في شجرة عائلتك',
   featuresDesc: 'ابنِ ونظّم وشارك تاريخ عائلتك — كله في مكان واحد. دي كل الإمكانيات اللي Family Tree بيديهالك.',
   featuresGetStarted: 'ابدأ مجاناً',
+  featuresOpenTrees: 'افتح شجرتي',
   featuresLearnMore: 'اعرف أكتر',
   featuresTryIt: 'جرّبه دلوقتي',
 

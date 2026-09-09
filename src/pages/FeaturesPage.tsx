@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
 import { useI18n } from '../i18n/I18nContext';
+import { useAuth } from '../context/AuthContext';
 import { usePageMeta } from '../hooks/usePageMeta';
 import Footer from '../components/Footer';
 
 export default function FeaturesPage() {
   const { t, toggleLang } = useI18n();
+  const { user } = useAuth();
   usePageMeta('Features — Family Tree', 'Everything you can do with your family tree: build, organize, view, share, export and manage.');
 
   const sections = [
@@ -71,18 +73,29 @@ export default function FeaturesPage() {
         <h1 className="text-3xl sm:text-5xl font-bold text-white mb-5 leading-tight">{t.featuresTitle}</h1>
         <p className="text-gray-400 max-w-2xl mx-auto leading-relaxed text-sm sm:text-base">{t.featuresDesc}</p>
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link
-            to="/register"
-            className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition shadow-lg hover:shadow-emerald-500/25 hover:scale-105"
-          >
-            {t.featuresGetStarted}
-          </Link>
-          <Link
-            to="/login"
-            className="px-8 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-semibold rounded-xl transition"
-          >
-            {t.signInBtn}
-          </Link>
+          {user ? (
+            <Link
+              to="/trees"
+              className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition shadow-lg hover:shadow-emerald-500/25 hover:scale-105"
+            >
+              🌳 {t.featuresOpenTrees}
+            </Link>
+          ) : (
+            <>
+              <Link
+                to="/register"
+                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition shadow-lg hover:shadow-emerald-500/25 hover:scale-105"
+              >
+                {t.featuresGetStarted}
+              </Link>
+              <Link
+                to="/login"
+                className="px-8 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-semibold rounded-xl transition"
+              >
+                {t.signInBtn}
+              </Link>
+            </>
+          )}
         </div>
       </header>
 
@@ -113,12 +126,21 @@ export default function FeaturesPage() {
           <div className="text-5xl mb-4">🌳</div>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">{t.featuresTryIt}</h2>
           <p className="text-gray-400 max-w-xl mx-auto mb-6 text-sm sm:text-base">{t.treeDesc}</p>
-          <Link
-            to="/register"
-            className="inline-block px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition shadow-lg hover:shadow-emerald-500/25 hover:scale-105"
-          >
-            {t.featuresGetStarted}
-          </Link>
+          {user ? (
+            <Link
+              to="/trees"
+              className="inline-block px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition shadow-lg hover:shadow-emerald-500/25 hover:scale-105"
+            >
+              🌳 {t.featuresOpenTrees}
+            </Link>
+          ) : (
+            <Link
+              to="/register"
+              className="inline-block px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition shadow-lg hover:shadow-emerald-500/25 hover:scale-105"
+            >
+              {t.featuresGetStarted}
+            </Link>
+          )}
         </div>
       </main>
 
