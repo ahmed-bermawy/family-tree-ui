@@ -11,7 +11,6 @@ import {
   type Node,
   type Edge,
   SelectionMode,
-  MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -30,129 +29,10 @@ import Toast from '../components/Toast';
 import { toCanvas } from 'html-to-image';
 import { useI18n } from '../i18n/I18nContext';
 import { resolveDeletePersonIds } from '../utils/deleteResolution';
+import { buildFamilyGraph, layoutFamilyGraph } from '../utils/familyGraph';
 import { isValidName, stripDigits } from '../utils/nameValidation';
 
 const nodeTypes = { personNode: PersonNode, coupleNode: CoupleNode };
-
-// Estimate node width based on type
-function getNodeWidth(nodeId: string, nodes: Node[]): number {
-  const node = nodes.find((n) => n.id === nodeId);
-  if (node?.type === 'coupleNode') return 320;
-  return 170; // personNode
-}
-
-const MIN_GAP = 40; // min px between node edges
-const GENERATION_GAP = 160;
-
-function buildManualLayout(nodes: Node[], edges: Edge[]): Node[] {
-  const spouseEdges = edges.filter((e) => e.data?.type === 'spouse');
-  const hierarchyEdges = edges.filter((e) => e.data?.type !== 'spouse');
-
-  // Build parent → children adjacency
-  const children = new Map<string, string[]>();
-  const parents = new Map<string, string[]>();
-
-  for (const e of hierarchyEdges) {
-    if (!children.has(e.source)) children.set(e.source, []);
-    children.get(e.source)!.push(e.target);
-    if (!parents.has(e.target)) parents.set(e.target, []);
-    parents.get(e.target)!.push(e.source);
-  }
-
-  // BFS to assign levels
-  const level = new Map<string, number>();
-  const queue: string[] = [];
-  for (const n of nodes) {
-    if (!parents.has(n.id) || parents.get(n.id)!.length === 0) {
-      level.set(n.id, 0);
-      queue.push(n.id);
-    }
-  }
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    const curLevel = level.get(current) || 0;
-    for (const child of children.get(current) || []) {
-      const next = curLevel + 1;
-      if (!level.has(child) || level.get(child)! < next) {
-        level.set(child, next);
-        queue.push(child);
-      }
-    }
-  }
-
-  // Build tree: for each node, find all its descendant subtrees
-  // Position each node centered over its children
-  const positioned = new Map<string, { x: number; y: number }>();
-
-  function calcSubtreeWidth(nodeId: string): number {
-    const myWidth = getNodeWidth(nodeId, nodes);
-    const kidList = children.get(nodeId) || [];
-    if (kidList.length === 0) return myWidth;
-    const kidWidths = kidList.map((k) => calcSubtreeWidth(k));
-    const totalKidSpan = kidWidths.reduce((a, b) => a + b, 0) + (kidList.length - 1) * MIN_GAP;
-    return Math.max(myWidth, totalKidSpan);
-  }
-
-  function positionNode(nodeId: string, centerX: number, y: number) {
-    positioned.set(nodeId, { x: centerX - getNodeWidth(nodeId, nodes) / 2, y });
-    const kidList = children.get(nodeId) || [];
-    if (kidList.length === 0) return;
-    const kidWidths = kidList.map((k) => calcSubtreeWidth(k));
-    const totalKidSpan = kidWidths.reduce((a, b) => a + b, 0) + (kidList.length - 1) * MIN_GAP;
-    let kidX = centerX - totalKidSpan / 2;
-    for (let i = 0; i < kidList.length; i++) {
-      const kw = kidWidths[i];
-      positionNode(kidList[i], kidX + kw / 2, y + GENERATION_GAP);
-      kidX += kw + MIN_GAP;
-    }
-  }
-
-  // Find roots (level 0) and position them
-  const roots = nodes.filter((n) => level.get(n.id) === 0);
-
-  if (roots.length === 1) {
-    // Single root: center the whole tree
-    positionNode(roots[0].id, 0, 0);
-  } else if (roots.length > 1) {
-    // Multiple roots: space them out
-    let x = -(roots.length * 300) / 2;
-    for (const root of roots) {
-      positionNode(root.id, x + 150, 0);
-      x += 300;
-    }
-  }
-
-  // Handle orphans (nodes that somehow weren't positioned)
-  let maxY = 0;
-  for (const [, pos] of positioned) {
-    if (pos.y > maxY) maxY = pos.y;
-  }
-  for (const n of nodes) {
-    if (!positioned.has(n.id)) {
-      maxY += GENERATION_GAP;
-      positioned.set(n.id, { x: 0, y: maxY });
-    }
-  }
-
-  // Position spouses side-by-side
-  for (const e of spouseEdges) {
-    const sourcePos = positioned.get(e.source);
-    const targetPos = positioned.get(e.target);
-    if (sourcePos && targetPos) {
-      // Move spouse to the right of their partner
-      const sourceWidth = getNodeWidth(e.source, nodes);
-      positioned.set(e.target, {
-        x: sourcePos.x + sourceWidth + 10,
-        y: sourcePos.y,
-      });
-    }
-  }
-
-  return nodes.map((n) => ({
-    ...n,
-    position: positioned.get(n.id) || { x: 0, y: 0 },
-  }));
-}
 
 export default function TreeEditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -162,12 +42,19 @@ export default function TreeEditorPage() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-  const { getViewport } = useReactFlow();
+  // Parent info straight from the raw relationships (used for menu rules)
+  const [graphInfo, setGraphInfo] = useState<{
+    parentsByPerson: Map<string, string[]>;
+    personGenders: Map<string, string>;
+  }>({ parentsByPerson: new Map(), personGenders: new Map() });
+  const { getViewport, fitView } = useReactFlow();
   const [treeName, setTreeName] = useState('');
   const [shareCode, setShareCode] = useState('');
   const [loading, setLoading] = useState(true);
   const [contextMenu, setContextMenu] = useState<{
     nodeId: string;
+    /** the actual person clicked (differs from nodeId inside a couple node) */
+    personId?: string | null;
     nodeType?: string;
     x: number;
     y: number;
@@ -250,91 +137,15 @@ export default function TreeEditorPage() {
       setShareCode(tree.shareCode || '');
       const graph = await trees.graph(treeId);
 
-      // Find spouse pairs and build couple mapping
-      const spouseEdges = graph.edges.filter((e: any) => e.type === 'spouse');
-      const coupled = new Set<number>(); // persons already in a couple node
-      const coupleMap = new Map<string, { id: string; p1: any; p2: any }>(); // personId -> couple group
-
-      spouseEdges.forEach((se: any, idx: number) => {
-        const p1 = graph.nodes.find((n: any) => n.id === se.from);
-        const p2 = graph.nodes.find((n: any) => n.id === se.to);
-        if (!p1 || !p2) return;
-        const coupleId = `couple-${idx}`;
-        coupleMap.set(String(se.from), { id: coupleId, p1, p2 });
-        coupleMap.set(String(se.to), { id: coupleId, p1, p2 });
-        coupled.add(se.from);
-        coupled.add(se.to);
-      });
-
-      // Create nodes
-      const rfNodes: Node[] = [];
-      const addedCouples = new Set<string>();
-
-      graph.edges.forEach((e: any) => {
-        if (e.type === 'spouse') return;
-        // Remap source/target to couple ID if the person is in a couple
-        const sourceCouple = coupleMap.get(String(e.from));
-        const targetCouple = coupleMap.get(String(e.to));
-        const mappedSource = sourceCouple ? sourceCouple.id : String(e.from);
-        const mappedTarget = targetCouple ? targetCouple.id : String(e.to);
-        // Store remapping info
-        e._mappedSource = mappedSource;
-        e._mappedTarget = mappedTarget;
-      });
-
-      // Create couple nodes
-      graph.nodes.forEach((p: any) => {
-        if (coupled.has(p.id)) {
-          const couple = coupleMap.get(String(p.id));
-          if (couple && !addedCouples.has(couple.id)) {
-            addedCouples.add(couple.id);
-            rfNodes.push({
-              id: couple.id,
-              type: 'coupleNode',
-              position: { x: 0, y: 0 },
-              data: {
-                person1: { id: String(couple.p1.id), name: couple.p1.name, gender: couple.p1.gender || '', photo: couple.p1.photo || '' },
-                person2: { id: String(couple.p2.id), name: couple.p2.name, gender: couple.p2.gender || '', photo: couple.p2.photo || '' },
-                onClick: () => {},
-              },
-            });
-          }
-        } else {
-          // Single person node
-          rfNodes.push({
-            id: String(p.id),
-            type: 'personNode',
-            position: { x: 0, y: 0 },
-            data: {
-              name: p.name,
-              gender: p.gender,
-              photo: p.photo || '',
-              onClick: () => {},
-            },
-          });
-        }
-      });
-
-      // Create edges
-      const rfEdges: Edge[] = graph.edges
-        .filter((e: any) => e.type !== 'spouse')
-        .map((e: any) => {
-          const isChildType = e.type === 'child';
-          return {
-            id: String(e.id),
-            source: isChildType ? e._mappedTarget : e._mappedSource,
-            target: isChildType ? e._mappedSource : e._mappedTarget,
-            type: 'smoothstep',
-            animated: true,
-            style: { stroke: '#6b7280', strokeWidth: 2 },
-            markerEnd: { type: MarkerType.ArrowClosed, color: '#6b7280' },
-            data: { type: e.type },
-          };
-        });
-
-      const laidOut = buildManualLayout(rfNodes, rfEdges);
+      // Build nodes/edges (couples, polygamy, child links) + auto layout
+      const built = buildFamilyGraph(graph);
+      setGraphInfo({ parentsByPerson: built.parentsByPerson, personGenders: built.personGenders });
+      const laidOut = layoutFamilyGraph(built.nodes, built.edges);
       setNodes(laidOut);
-      setEdges(rfEdges);
+      setEdges(built.edges);
+      // Re-fit the view so the whole tree stays on screen after any change
+      // (especially polygamous families, which grow sideways).
+      setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 60);
     } catch {
       navigate('/trees');
     } finally {
@@ -410,12 +221,39 @@ export default function TreeEditorPage() {
   );
 
   const onNodeClick = useCallback(
-    (_: React.MouseEvent, node: Node) => {
+    (event: React.MouseEvent, node: Node) => {
+      // In a merged couple node we must know WHICH of the two people was
+      // clicked — the menu rules differ per person (e.g. husband vs wife).
+      let personId: string | null = null;
+      if (node.type === 'coupleNode') {
+        const half = (event.target as HTMLElement)?.closest?.('[data-person-id]');
+        personId = half?.getAttribute('data-person-id') || null;
+        if (!personId) {
+          // Fallback: decide by click position (works in RTL too)
+          const d = node.data as any;
+          const rect = document
+            .querySelector(`.react-flow__node[data-id="${node.id}"]`)
+            ?.getBoundingClientRect();
+          if (rect) {
+            const first = rect.left + rect.width / 4;
+            const second = rect.left + (rect.width * 3) / 4;
+            personId = String(
+              Math.abs(event.clientX - first) <= Math.abs(event.clientX - second)
+                ? d?.person1?.id
+                : d?.person2?.id,
+            );
+          }
+        }
+      } else {
+        personId = node.id;
+      }
+
       setContextMenu({
         nodeId: node.id,
+        personId,
         nodeType: node.type || 'personNode',
-        x: Math.min(_.clientX, window.innerWidth - 180),
-        y: Math.min(_.clientY, window.innerHeight - 280),
+        x: Math.min(event.clientX, window.innerWidth - 200),
+        y: Math.min(event.clientY, window.innerHeight - 300),
       });
     },
     [],
@@ -485,29 +323,11 @@ export default function TreeEditorPage() {
       toId = targetPersonId;
       relType = 'parent';
     } else if (relationType === 'sibling') {
-      // Target person (e.g. ياسمين) becomes a sibling of the SELECTED person (e.g. ola):
-      // link the target as a child of the selected person's parent(s)
-      const selectedNodeId = findNodeIdForPerson(personId);
-      const parentEdges = edges.filter((e) => e.target === selectedNodeId);
-      if (parentEdges.length === 0) {
-        setToast({ message: t.noParentFound });
-        setLinkModal(null);
-        return;
-      }
-      // Collect all parents of the selected person (couple nodes contribute both spouses)
-      const parentIds = new Set<number>();
-      parentEdges.forEach((pe) => {
-        const src = pe.source;
-        if (src.startsWith('couple-')) {
-          const coupleNode = nodes.find((n) => n.id === src);
-          const d = coupleNode?.data as any;
-          if (d?.person1?.id) parentIds.add(Number(d.person1.id));
-          if (d?.person2?.id) parentIds.add(Number(d.person2.id));
-        } else {
-          parentIds.add(resolvePersonId(src));
-        }
-      });
-      if (parentIds.size === 0) {
+      // The target becomes a sibling of the SELECTED person by sharing that
+      // person's parents. Read from the raw relationships so a person inside
+      // a merged couple node is handled correctly.
+      const parentIds = parentsOfPerson(personId);
+      if (parentIds.length === 0) {
         setToast({ message: t.noParentFound });
         setLinkModal(null);
         return;
@@ -528,6 +348,10 @@ export default function TreeEditorPage() {
 
     try {
       await relationships.create({ fromPersonId: fromId, toPersonId: toId, type: relType });
+      // An existing person linked as a child also gets the other parent
+      if (relType === 'child') {
+        await linkOtherParent(fromId, targetPersonId);
+      }
       setLinkModal(null);
       loadGraph();
       setToast({ message: t.relationAdded, type: 'success' });
@@ -551,14 +375,70 @@ export default function TreeEditorPage() {
     return Number(nodeId);
   };
 
-  // Resolve a person ID back to its node ID (handles couple nodes)
-  const findNodeIdForPerson = (personId: number): string => {
-    const coupleNode = nodes.find((n) => {
-      if (n.type !== 'coupleNode') return false;
-      const d = n.data as any;
-      return Number(d.person1?.id) === personId || Number(d.person2?.id) === personId;
+  // All known spouses of a person — from spouse edges (polygamous families)
+  // and from the merged couple node (monogamous couples).
+  const spousesOfPerson = (personId: number): number[] => {
+    const ids = new Set<number>();
+    edges.forEach((e) => {
+      if ((e.data as any)?.type !== 'spouse') return;
+      const s = resolvePersonId(e.source);
+      const t = resolvePersonId(e.target);
+      if (s === personId) ids.add(t);
+      if (t === personId) ids.add(s);
     });
-    return coupleNode ? coupleNode.id : String(personId);
+    nodes.forEach((n) => {
+      if (n.type !== 'coupleNode') return;
+      const d = n.data as any;
+      const p1 = Number(d?.person1?.id);
+      const p2 = Number(d?.person2?.id);
+      if (p1 === personId && p2) ids.add(p2);
+      if (p2 === personId && p1) ids.add(p1);
+    });
+    return [...ids].filter((x) => Number.isFinite(x) && x > 0);
+  };
+
+  // A child added under one spouse is normally also the child of that
+  // person's spouse. Record the second link automatically — otherwise the
+  // child would show only one parent and "Add Parent" would stay open.
+  // Skipped when the parent has several spouses (polygamy: the other parent
+  // is genuinely unknown) or none.
+  const linkOtherParent = async (childId: number, parentId: number) => {
+    const spouses = spousesOfPerson(parentId);
+    if (spouses.length !== 1) return;
+    try {
+      await relationships.create({
+        fromPersonId: childId,
+        toPersonId: spouses[0],
+        type: 'child',
+      });
+    } catch {
+      // best effort — the primary link is already there
+    }
+  };
+
+  // Person ids of every known parent of a person. Read from the RAW
+  // relationships (keyed by person) because inside a merged couple node the
+  // rendered edges can no longer tell which parent belongs to which person.
+  const parentsOfPerson = (personId: number): number[] =>
+    (graphInfo.parentsByPerson.get(String(personId)) || [])
+      .map((id) => Number(id))
+      .filter((id) => Number.isFinite(id) && id > 0);
+
+  // Adding a PARENT works the same way round: when the new parent has exactly
+  // one spouse, that spouse is the child's other parent (e.g. adding محمود as
+  // هدى's father also records مهديه as her mother).
+  const linkParentSpouse = async (childId: number, parentId: number) => {
+    const spouses = spousesOfPerson(parentId);
+    if (spouses.length !== 1) return;
+    try {
+      await relationships.create({
+        fromPersonId: childId,
+        toPersonId: spouses[0],
+        type: 'child',
+      });
+    } catch {
+      // best effort
+    }
   };
 
   // Map known server error messages to localized text
@@ -591,38 +471,36 @@ export default function TreeEditorPage() {
         const targetNodeId = formModal.targetNodeId;
         const targetPersonId = resolvePersonId(targetNodeId);
 
-        let fromId = targetPersonId;
-        let toId = newPerson.id;
-        let relType = type;
+        const links: { fromPersonId: number; toPersonId: number; type: string }[] = [];
 
         if (type === 'parent') {
-          fromId = newPerson.id;
-          toId = targetPersonId;
-          relType = 'parent';
+          links.push({ fromPersonId: newPerson.id, toPersonId: targetPersonId, type: 'parent' });
         } else if (type === 'sibling') {
-          const parentEdge = edges.find(
-            (e) => e.target === targetNodeId
-          );
-          if (parentEdge) {
-            const parentId = resolvePersonId(parentEdge.source);
-            fromId = newPerson.id;
-            toId = parentId;
-            relType = 'child';
-          } else {
+          // A sibling shares the clicked person's parents — a couple node
+          // contributes both of its people, and the lookup must use the raw
+          // relationships so a person inside a couple node is not missed.
+          const parents = parentsOfPerson(targetPersonId);
+          if (parents.length === 0) {
             setToast({ message: t.noParentFound });
             await persons.delete(newPerson.id);
             setFormModal(null);
             return;
           }
+          parents.forEach((parentPersonId) => {
+            links.push({ fromPersonId: newPerson.id, toPersonId: parentPersonId, type: 'child' });
+          });
         } else if (type === 'spouse') {
-          relType = 'spouse';
+          links.push({ fromPersonId: targetPersonId, toPersonId: newPerson.id, type: 'spouse' });
         } else if (type === 'child') {
-          fromId = newPerson.id;
-          toId = targetPersonId;
-          relType = 'child';
+          links.push({ fromPersonId: newPerson.id, toPersonId: targetPersonId, type: 'child' });
         }
 
-        await relationships.create({ fromPersonId: fromId, toPersonId: toId, type: relType });
+        for (const link of links) {
+          await relationships.create(link);
+        }
+        // Keep both parents in sync, whichever end was added
+        if (type === 'child') await linkOtherParent(newPerson.id, targetPersonId);
+        if (type === 'parent') await linkParentSpouse(newPerson.id, targetPersonId);
       }
 
       setFormModal(null);
@@ -642,6 +520,54 @@ export default function TreeEditorPage() {
   };
 
   const isEmpty = !loading && nodes.length === 0;
+
+  // The exact PERSON the menu was opened on. Inside a merged couple node
+  // this is the half that was clicked — so the husband and the wife get
+  // different rules (e.g. حسن vs هدى).
+  const clickedPersonId = contextMenu?.personId || contextMenu?.nodeId || '';
+  const clickedNode = contextMenu
+    ? nodes.find((n) => n.id === contextMenu.nodeId)
+    : undefined;
+  const clickedGender = (() => {
+    if (!contextMenu) return '';
+    if (clickedNode?.type === 'coupleNode') {
+      const d = clickedNode.data as any;
+      if (String(d?.person1?.id) === clickedPersonId) return d?.person1?.gender || '';
+      if (String(d?.person2?.id) === clickedPersonId) return d?.person2?.gender || '';
+    }
+    return ((clickedNode?.data as any)?.gender as string) || '';
+  })();
+
+  // Can the clicked PERSON take another spouse?
+  // A woman may have only one husband at a time; a man may take more than
+  // one wife (polygamy), so "Add Spouse" is only locked for married women.
+  const spouseRule = (() => {
+    if (!contextMenu) return { disabled: false, hint: '' };
+    const personId = Number(clickedPersonId);
+    if (!personId) return { disabled: false, hint: '' };
+    const married = spousesOfPerson(personId).length > 0;
+    return married && clickedGender !== 'male'
+      ? { disabled: true, hint: t.spouseAlreadyMarried }
+      : { disabled: false, hint: '' };
+  })();
+
+  // Can the clicked PERSON still gain a parent?
+  // A person may have at most one father and one mother, so once both are
+  // known the "Add Parent" item is locked.
+  const parentRule = (() => {
+    if (!contextMenu) return { disabled: false, hint: '' };
+    const parentIds = graphInfo.parentsByPerson.get(clickedPersonId) || [];
+    if (parentIds.length === 0) return { disabled: false, hint: '' };
+
+    const genders = parentIds.map((pid) => graphInfo.personGenders.get(pid) || '');
+    const hasFather = genders.includes('male');
+    const hasMother = genders.includes('female');
+
+    if (hasFather && hasMother) return { disabled: true, hint: t.parentsComplete };
+    if (hasFather) return { disabled: false, hint: t.onlyMotherCanBeAdded };
+    if (hasMother) return { disabled: false, hint: t.onlyFatherCanBeAdded };
+    return { disabled: false, hint: '' };
+  })();
 
   const handlePrint = async () => {
     // Export ONLY the tree (no navbar/toolbar/minimap), at high quality.
@@ -816,12 +742,17 @@ export default function TreeEditorPage() {
               <NodeContextMenu
                 x={contextMenu.x}
                 y={contextMenu.y}
+                spouseDisabled={spouseRule.disabled}
+                spouseHint={spouseRule.hint}
+                parentDisabled={parentRule.disabled}
+                parentHint={parentRule.hint}
                 onAdd={(type) => {
-                  openAddRelationModal(type, contextMenu.nodeId);
+                  // relation actions target the exact person that was clicked
+                  openAddRelationModal(type, contextMenu.personId || contextMenu.nodeId);
                   setContextMenu(null);
                 }}
                 onLink={() => {
-                  openLinkModal(contextMenu.nodeId);
+                  openLinkModal(contextMenu.personId || contextMenu.nodeId);
                   setContextMenu(null);
                 }}
                 onEdit={() => {

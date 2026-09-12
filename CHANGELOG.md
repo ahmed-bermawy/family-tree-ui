@@ -5,6 +5,25 @@ All notable changes to the Family Tree application will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-09-12
+
+### Added
+- 👨‍👩‍👧‍👦 **Polygamous families** — a man can be married to more than one wife; a woman has one husband. Each wife renders as her own node in a row **below her husband**, with her children hanging under her and a dashed marriage link from the husband's bottom into the top of each wife. A wife keeps her own column, so her children never mix with a co-wife's children
+- 🎨 **Colour-coded family lines** — every parent gets its own stable colour, so you can see at a glance whose children are whose and follow a line even where lines cross (pink dashed = marriage)
+- 🔒 **Context-aware node menu** — actions are limited to what is possible for the person you clicked:
+  - **Add Spouse** is locked for a woman who is already married ("only one husband allowed")
+  - **Add Parent** is locked once both parents are known (with "only a mother/father can be added" while one is still missing)
+  - each half of a **couple node** is evaluated **separately** — clicking the husband and clicking the wife give different menus
+- 🔗 **Parents fill in automatically** — adding a child under one spouse also records the other spouse as a parent, and adding a parent records that parent's (single) spouse as the other parent, so a couple is never half-recorded
+- ✨ **Features page** — new "Polygamous families" section plus a colour-coded lines bullet (EN + AR)
+
+### Fixed
+- 🗑️ **Delete no longer drags in spouses** — deleting a person removes the person + their descendants, but no longer cascades to husband/wife. Previously deleting one wife deleted the husband, then his other wives, and finally the whole tree
+- 🧬 **Sibling links** — "Add Sibling" no longer fails with "No parent found" when the person sits inside a couple node; the new sibling inherits **both** parents
+- 📐 **Layout** — a parent whose child sits several generations lower (e.g. the father of a wife who married into the family) is parked **outside the tree block** on the top row, so its link drops through free space instead of cutting across an occupied row; rows are de-overlapped automatically
+- 🔁 **Cycle detection** — the check now walks **upward only**; the previous bi-directional walk falsely rejected valid relations (e.g. adding a father to a child whose half-brother already had that father)
+- 🖼️ **Stale UI after deploys** — `index.html` is served with `Cache-Control: no-cache` (hashed assets stay immutable), so a normal refresh always picks up the new build
+
 ## [1.4.1] - 2026-08-16
 
 ### Changed

@@ -27,9 +27,10 @@ export default function CoupleNode({ data }: NodeProps) {
 
   return (
     <div className="relative group">
-      <Handle type="target" position={Position.Top} className="!bg-gray-500 !w-2 !h-2" />
+      <Handle type="target" id="tree-top" position={Position.Top} className="!bg-gray-500 !w-2 !h-2" />
       <div className="flex items-center gap-0 bg-gray-800/80 border-2 border-emerald-600/50 rounded-2xl shadow-xl">
         <div
+          data-person-id={person1.id}
           className="px-4 py-3 min-w-[130px] cursor-pointer hover:bg-gray-700/50 rounded-l-2xl transition flex items-center gap-2"
           onClick={() => onClick?.(person1.id)}
         >
@@ -43,6 +44,7 @@ export default function CoupleNode({ data }: NodeProps) {
         <div className="text-pink-400 text-lg px-1 select-none">❤️</div>
 
         <div
+          data-person-id={person2.id}
           className="px-4 py-3 min-w-[130px] cursor-pointer hover:bg-gray-700/50 rounded-r-2xl transition flex items-center gap-2"
           onClick={() => onClick?.(person2.id)}
         >
@@ -53,7 +55,7 @@ export default function CoupleNode({ data }: NodeProps) {
           </div>
         </div>
       </div>
-      <Handle type="source" position={Position.Bottom} className="!bg-gray-500 !w-2 !h-2" />
+      <Handle type="source" id="tree-bottom" position={Position.Bottom} className="!bg-gray-500 !w-2 !h-2" />
     </div>
   );
 }

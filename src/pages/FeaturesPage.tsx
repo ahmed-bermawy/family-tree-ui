@@ -25,8 +25,14 @@ export default function FeaturesPage() {
     {
       title: t.featViewTitle,
       desc: t.featViewDesc,
-      items: [t.featView1, t.featView2, t.featView3, t.featView4],
+      items: [t.featView1, t.featView2, t.featView3, t.featView4, t.featView5],
       gradient: 'from-purple-500/10 to-transparent',
+    },
+    {
+      title: t.featPolygamyTitle,
+      desc: t.featPolygamyDesc,
+      items: [t.featPolygamy1, t.featPolygamy2, t.featPolygamy3, t.featPolygamy4],
+      gradient: 'from-rose-500/10 to-transparent',
     },
     {
       title: t.featShareTitle,

@@ -17,7 +17,7 @@ export default function PersonNode({ data }: NodeProps) {
 
   return (
     <div className="relative group">
-      <Handle type="target" position={Position.Top} className="!bg-gray-500 !w-2 !h-2" />
+      <Handle type="target" id="tree-top" position={Position.Top} className="!bg-gray-500 !w-2 !h-2" />
       <div
         className="bg-gray-800 border-2 border-gray-600 rounded-xl px-4 py-3 min-w-[140px] shadow-lg hover:border-emerald-500 transition cursor-pointer"
         onClick={() => onClick?.()}
@@ -40,7 +40,7 @@ export default function PersonNode({ data }: NodeProps) {
           </div>
         </div>
       </div>
-      <Handle type="source" position={Position.Bottom} className="!bg-gray-500 !w-2 !h-2" />
+      <Handle type="source" id="tree-bottom" position={Position.Bottom} className="!bg-gray-500 !w-2 !h-2" />
     </div>
   );
 }
