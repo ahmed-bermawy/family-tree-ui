@@ -5,6 +5,11 @@ All notable changes to the Family Tree application will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2026-09-12
+
+### Fixed
+- 📱 **Tree list actions are always visible** — the Open / Rename / Delete buttons on each tree card were hidden until hover (`opacity-0 group-hover:opacity-100`), which made them unreachable on touch devices. They are now always shown, and the card header stacks on small screens so the buttons wrap under the tree name instead of squeezing it.
+
 ## [1.5.0] - 2026-09-12
 
 ### Added

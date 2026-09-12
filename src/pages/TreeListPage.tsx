@@ -131,7 +131,7 @@ export default function TreeListPage() {
               key={tree.id}
               className="bg-gray-800/60 backdrop-blur-sm border border-gray-700 rounded-xl p-5 hover:border-emerald-600/50 transition group"
             >
-              <div className="flex items-start justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div>
                   <h3
                     className="text-lg font-semibold text-white cursor-pointer hover:text-emerald-400 transition"
@@ -143,7 +143,8 @@ export default function TreeListPage() {
                     {t.created} {new Date(tree.createdAt).toLocaleDateString()}
                   </p>
                 </div>
-                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                {/* Always visible — hover-only actions are unreachable on touch */}
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => navigate(`/trees/${tree.id}`)}
                     className="px-3 py-1.5 bg-emerald-600/20 text-emerald-400 rounded-lg text-sm hover:bg-emerald-600/30 transition"
