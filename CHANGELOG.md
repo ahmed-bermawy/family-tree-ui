@@ -5,6 +5,18 @@ All notable changes to the Family Tree application will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-09-18
+
+### Added
+- 🔍 **The site is now crawlable** — the home page used to redirect every visitor (including search-engine crawlers) straight to `/trees`, which bounced them on to `/login`, so search engines only ever saw a login form or an empty `<div id="root">`. `/` now serves a public landing page to visitors without a session and sends signed-in members to their trees as before.
+- 📄 **Static content for crawlers** — the landing copy (headline, feature list, FAQ) is present in the raw HTML, so it is indexed without executing JavaScript.
+- 🏷️ **Structured data** — `WebApplication` + `WebSite` + `FAQPage` JSON-LD, so search engines can render the FAQ and app information directly in results.
+- 🗺️ **Sitemap** now lists `/` and `/features` (the marketing page was missing) with `lastmod`.
+
+### Changed
+- `robots.txt` also excludes `/reset-password`; `/trees` and `/profile` remain private.
+- Page title/description/OG copy rewritten around the terms people actually search for ("family tree maker", "free family tree", "بناء شجرة العائلة").
+
 ## [1.5.1] - 2026-09-12
 
 ### Fixed

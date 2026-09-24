@@ -6,16 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- Primary SEO -->
-    <title>🌳 Family Tree — Build & share your family history</title>
-    <meta name="description" content="Create your family tree online for free. Add photos, connect relatives, and share your family history with a private link." />
-    <meta name="robots" content="index, follow" />
+    <title>🌳 Family Tree Maker — Build, Share & Explore Your Family History</title>
+    <meta name="description" content="Free online family tree maker. Add relatives, upload photos, connect multiple spouses, and share your family history with a private link — in English and Arabic." />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
     <link rel="canonical" href="https://family-tree.bermawy.tech/" />
 
     <!-- Open Graph (Facebook, WhatsApp, Telegram, LinkedIn) -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Family Tree" />
-    <meta property="og:title" content="🌳 Family Tree — Build & share your family history" />
-    <meta property="og:description" content="Create your family tree online for free. Add photos, connect relatives, and share your family history with a private link." />
+    <meta property="og:title" content="🌳 Family Tree Maker — Build, Share & Explore Your Family History" />
+    <meta property="og:description" content="Free online family tree maker. Add relatives, upload photos, connect multiple spouses, and share your family history with a private link — in English and Arabic." />
     <meta property="og:url" content="https://family-tree.bermawy.tech/" />
     <meta property="og:image" content="https://family-tree.bermawy.tech/tree-screenshot.jpg" />
     <meta property="og:image:width" content="1200" />
@@ -25,30 +25,124 @@
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="🌳 Family Tree — Build & share your family history" />
-    <meta name="twitter:description" content="Create your family tree online for free. Add photos, connect relatives, and share your family history with a private link." />
+    <meta name="twitter:title" content="🌳 Family Tree Maker — Build, Share & Explore Your Family History" />
+    <meta name="twitter:description" content="Free online family tree maker. Add relatives, upload photos, connect multiple spouses, and share with a private link — English & Arabic." />
     <meta name="twitter:image" content="https://family-tree.bermawy.tech/tree-screenshot.jpg" />
 
     <!-- Theme -->
     <meta name="theme-color" content="#059669" />
 
-    <!-- Structured data (JSON-LD) -->
+    <!-- Structured data: app + site + FAQ -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "Family Tree",
-      "url": "https://family-tree.bermawy.tech/",
-      "description": "Create your family tree online for free. Add photos, connect relatives, and share your family history with a private link.",
-      "applicationCategory": "LifestyleApplication",
-      "operatingSystem": "Any",
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-      "inLanguage": ["en", "ar"]
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "@id": "https://family-tree.bermawy.tech/#app",
+          "name": "Family Tree",
+          "url": "https://family-tree.bermawy.tech/",
+          "description": "Free online family tree maker. Add relatives, upload photos, connect multiple spouses, and share your family history with a private link.",
+          "applicationCategory": "LifestyleApplication",
+          "operatingSystem": "Any",
+          "browserRequirements": "Requires JavaScript",
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+          "inLanguage": ["en", "ar"],
+          "featureList": [
+            "Visual family tree editor",
+            "Unlimited relatives and generations",
+            "Photo uploads for every person",
+            "Support for polygamous families",
+            "Private share links",
+            "English and Arabic interface with RTL"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://family-tree.bermawy.tech/#website",
+          "url": "https://family-tree.bermawy.tech/",
+          "name": "Family Tree",
+          "inLanguage": ["en", "ar"]
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://family-tree.bermawy.tech/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Is the family tree maker free?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Yes. Creating a family tree is completely free — build your tree, add relatives and photos, and share it with a private link at no cost." }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I build a family tree with more than one wife?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Yes. The app is built for real family structures: a man can be connected to more than one wife, each wife keeps her own children beneath her, and every child stays linked to both parents." }
+            },
+            {
+              "@type": "Question",
+              "name": "Do relatives need an account to view my tree?",
+              "acceptedAnswer": { "@type": "Answer", "text": "No. Every tree has a private share link. Anyone with the link can open and explore the tree in read-only mode without registering." }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I use the family tree app in Arabic?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Yes. The whole interface is available in English and Arabic, with full right-to-left (RTL) support." }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I add photos to the people in my tree?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Yes. You can upload a profile photo for every person in the tree, along with their name and gender." }
+            }
+          ]
+        }
+      ]
     }
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!--
+        Static content for crawlers and for the moment before React boots.
+        React replaces everything inside #root on mount, so this is only ever
+        seen by visitors without JavaScript and by search-engine crawlers.
+      -->
+      <main style="max-width:820px;margin:0 auto;padding:24px;font-family:system-ui,sans-serif;line-height:1.7;color:#111">
+        <h1>🌳 Family Tree Maker — Build, Share &amp; Explore Your Family History</h1>
+        <p>
+          Create your family tree online for free. Add parents, children, siblings
+          and spouses, upload photos, and share your family history with relatives
+          through a private link. The whole app works in <strong>English and Arabic</strong>.
+        </p>
+
+        <h2>What you can do</h2>
+        <ul>
+          <li><strong>Build your tree visually</strong> — add relatives and see the graph grow with automatic layout.</li>
+          <li><strong>Organize &amp; edit</strong> — update names, genders and photos at any time.</li>
+          <li><strong>Polygamous families</strong> — a man can be connected to more than one wife, and each wife keeps her own children beneath her.</li>
+          <li><strong>Share with family</strong> — every tree has a private link; relatives open it read-only without an account.</li>
+          <li><strong>Export &amp; print</strong> — download your tree to keep or print it.</li>
+          <li><strong>Two languages</strong> — full English and Arabic interface with right-to-left support.</li>
+        </ul>
+
+        <h2>Frequently asked questions</h2>
+        <h3>Is the family tree maker free?</h3>
+        <p>Yes. Creating a family tree is completely free — build your tree, add relatives and photos, and share it with a private link at no cost.</p>
+
+        <h3>Can I build a family tree with more than one wife?</h3>
+        <p>Yes. The app is built for real family structures: a man can be connected to more than one wife, each wife keeps her own children beneath her, and every child stays linked to both parents.</p>
+
+        <h3>Do relatives need an account to view my tree?</h3>
+        <p>No. Every tree has a private share link. Anyone with the link can open and explore it in read-only mode without registering.</p>
+
+        <h3>Can I use the family tree app in Arabic?</h3>
+        <p>Yes. The whole interface is available in English and Arabic, with full right-to-left (RTL) support.</p>
+
+        <h3>Can I add photos to the people in my tree?</h3>
+        <p>Yes. You can upload a profile photo for every person in the tree, along with their name and gender.</p>
+
+        <p><a href="/features">See all features →</a></p>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

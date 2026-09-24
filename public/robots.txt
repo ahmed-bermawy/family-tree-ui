@@ -1,6 +1,8 @@
 User-agent: *
 Allow: /
+# Private areas — no value in search results
 Disallow: /trees
 Disallow: /profile
+Disallow: /reset-password
 
 Sitemap: https://family-tree.bermawy.tech/sitemap.xml
