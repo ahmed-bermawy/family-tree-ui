@@ -16,6 +16,7 @@ export const en = {
   // Navbar
   back: '← Back',
   logout: 'Logout',
+  profile: 'My profile',
   print: '🖨️ Print',
   share: '🔗 Share',
 
@@ -33,6 +34,47 @@ export const en = {
   emptyTitle: 'Your tree is empty',
   emptyDesc: 'Start building your family tree by adding the first person!',
   addFirstPerson: '+ Add First Person',
+
+  // ── upcoming birthdays ───────────────────────────────────────────────
+  birthdayTitle: 'Upcoming birthdays',
+  birthdayNone: 'No birthdays in the next 30 days',
+  birthdayTooltip: 'Birthdays in the next 30 days',
+  birthdayToday: 'Today! 🎉',
+  birthdayTomorrow: 'Tomorrow',
+  birthdayInDays: 'In {n} days',
+  birthdayTurning: 'turns {n}',
+  birthdayGreet: '🎉 Wish on WhatsApp',
+
+  // ── tree layout (order + hand-dragged positions) ─────────────────────
+  layoutTitle: 'Order',
+  layoutAgeDesc: 'Eldest on the right',
+  layoutAgeAsc: 'Eldest on the left',
+  layoutResetBtn: 'Auto arrange',
+  layoutSaved: 'Order saved ✓',
+  layoutSaveFailed: 'Could not save the order',
+  layoutReset: 'Back to auto arrangement ✓',
+  layoutDragHint: 'Tip: drag anyone to move them — the spot is saved automatically.',
+
+  // ── birth & death dates ──────────────────────────────────────────────
+  dateBirthLabel: 'Date of birth',
+  dateDeathLabel: 'Date of death',
+  dateOptional: 'optional',
+  dateNone: 'Not set',
+  dateYearOnly: 'Year only',
+  dateFull: 'Full date',
+  dateHidden: 'Hidden (not shown on the tree)',
+  dateYearPlaceholder: 'e.g. 1980',
+  dateBirthHint: 'Leave it empty if you prefer — the tree works without dates.',
+  dateDeathHint: 'Marks the person as deceased. Keep the date hidden if you prefer.',
+  dateInvalidYear: 'Enter a year between 1800 and 2100',
+
+  // ── guest builder (/try) ─────────────────────────────────────────────
+  guestSave: 'Save my tree',
+  guestBanner: 'Builder mode — your tree is kept in this browser. Create a free account to save it permanently.',
+  guestTryCta: 'Try it now — no signup needed',
+  guestTryHint: 'Build your tree right away. Sign up only when you want to save it.',
+  guestImported: 'Your tree was saved to your account 🎉',
+  guestImportFailed: 'Could not save your tree — you can try again from the builder.',
 
   // Person form modal
   addYourself: 'Add Yourself',
@@ -198,6 +240,7 @@ export const en = {
 
   // Features page
   features: 'Features',
+  home: 'Home',
   featuresTitle: 'Everything you can do with your family tree',
   featuresDesc: 'Build, organize, and share your family history — all in one place. Here is everything Family Tree lets you do.',
   featuresGetStarted: 'Get Started Free',
@@ -212,6 +255,34 @@ export const en = {
   featBuild2: 'Connect relatives: spouse, child, parent or sibling',
   featBuild3: 'Link two people who are already in the tree — no retyping',
   featBuild4: 'Live preview shows who will become whose child/parent before you confirm',
+
+  featGuestTitle: '🌳 Try it before signing up',
+  featGuestDesc: 'Build a tree straight away — no account needed.',
+  featGuest1: 'Start building instantly from the home page',
+  featGuest2: 'Your work is saved in the browser as you go',
+  featGuest3: 'Sign up later and the tree moves to your account automatically',
+  featGuest4: 'Nothing gets lost along the way',
+
+  featDatesTitle: '📅 Birth & death dates',
+  featDatesDesc: 'Record a full life story — with as much or as little detail as you like.',
+  featDates1: 'Add a birth date and a death date for anyone',
+  featDates2: 'Choose what shows: the full date, the year only, or keep it private',
+  featDates3: 'Deceased relatives are marked with a 🕊️ and a gentle frame',
+  featDates4: 'Private dates are still stored — for ages and sorting — they are simply never shown',
+
+  featBirthdaysTitle: '🎂 Birthday reminders',
+  featBirthdaysDesc: 'Never miss a family birthday again.',
+  featBirthdays1: 'A badge shows every birthday in the next 30 days',
+  featBirthdays2: 'See exactly how many days are left and which age they turn',
+  featBirthdays3: 'Send a birthday wish on WhatsApp in one tap',
+  featBirthdays4: 'Reminders sort themselves — nearest first',
+
+  featLayoutTitle: '🔀 Arrange it your way',
+  featLayoutDesc: 'Order the tree by age, or place anyone exactly where you want them.',
+  featLayout1: 'Siblings are ordered automatically by birth date — eldest first',
+  featLayout2: 'Pick which side the eldest sits on, right or left',
+  featLayout3: 'Drag anyone to move them — the position is saved for you',
+  featLayout4: 'A refresh keeps your arrangement — one click returns to the automatic layout',
 
   featOrganizeTitle: '🗂️ Organize & edit',
   featOrganizeDesc: 'Keep every family member up to date.',

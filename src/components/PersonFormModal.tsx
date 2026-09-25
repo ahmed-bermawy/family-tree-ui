@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useI18n } from '../i18n/I18nContext';
 import { isValidName, stripDigits } from '../utils/nameValidation';
+import DateField from './DateField';
+import type { DateEdit } from '../utils/lifeDates';
 
 interface Props {
   title: string;
@@ -8,6 +10,10 @@ interface Props {
   gender: string;
   onNameChange: (val: string) => void;
   onGenderChange: (val: string) => void;
+  birth: DateEdit;
+  onBirthChange: (val: DateEdit) => void;
+  death: DateEdit;
+  onDeathChange: (val: DateEdit) => void;
   onConfirm: () => void;
   onCancel: () => void;
   confirmLabel?: string;
@@ -15,6 +21,7 @@ interface Props {
 
 export default function PersonFormModal({
   title, name, gender, onNameChange, onGenderChange,
+  birth, onBirthChange, death, onDeathChange,
   onConfirm, onCancel, confirmLabel,
 }: Props) {
   const { t } = useI18n();
@@ -46,7 +53,7 @@ export default function PersonFormModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div
-        className="bg-gray-800 border border-gray-700 rounded-2xl p-5 sm:p-6 w-[90vw] sm:w-96 shadow-2xl animate-in"
+        className="bg-gray-800 border border-gray-700 rounded-2xl p-5 sm:p-6 w-[90vw] sm:w-96 shadow-2xl animate-in max-h-[90vh] overflow-y-auto"
         style={{ animation: 'fadeIn 0.2s ease-out' }}
       >
         <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>
@@ -68,7 +75,7 @@ export default function PersonFormModal({
         {!nameError && <p className="text-gray-600 text-[10px] mb-3">{t.nameHint}</p>}
 
         <label className="text-gray-300 text-xs font-medium mb-1.5 block">{t.genderTitle}</label>
-        <div className="flex gap-3 mb-6">
+        <div className="flex gap-3 mb-5">
           {[
             { value: 'male', label: t.male, color: 'blue' },
             { value: 'female', label: t.female, color: 'pink' },
@@ -100,6 +107,9 @@ export default function PersonFormModal({
             {t.skip}
           </button>
         </div>
+
+        <DateField kind="birth" value={birth} onChange={onBirthChange} />
+        <DateField kind="death" value={death} onChange={onDeathChange} />
 
         <div className="flex gap-3 justify-end">
           <button

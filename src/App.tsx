@@ -27,9 +27,13 @@ const queryClient = new QueryClient();
  * bounced crawlers on to /login and left the site with nothing to index.
  */
 function HomeRoute() {
-  const { user, isLoading } = useAuth();
+  const { isLoading } = useAuth();
   if (isLoading) return null;
-  return user ? <Navigate to="/trees" replace /> : <FeaturesPage />;
+  // The home page is the product tour for EVERYONE, signed in or not — it is
+  // the page search engines and shared links land on. FeaturesPage already
+  // swaps its own CTAs (builder links for guests, "My Trees" for members), so
+  // bouncing members straight to their list only hid the tour from them.
+  return <FeaturesPage />;
 }
 
 export default function App() {
@@ -45,7 +49,9 @@ export default function App() {
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
               <Route path="/feedback" element={<FeedbackPage />} />
-              <Route path="/features" element={<FeaturesPage />} />
+              {/* /features was folded into the home page — the server sends a
+                  301, this covers in-app navigation */}
+              <Route path="/features" element={<Navigate to="/" replace />} />
               <Route
                 path="/trees"
                 element={
@@ -70,6 +76,15 @@ export default function App() {
                   <ProtectedRoute>
                     <ProfilePage />
                   </ProtectedRoute>
+                }
+              />
+              {/* Guest builder — no account, everything stays in the browser */}
+              <Route
+                path="/try"
+                element={
+                  <ReactFlowProvider>
+                    <TreeEditorPage />
+                  </ReactFlowProvider>
                 }
               />
               {/* Public landing for visitors & crawlers; /trees for members */}

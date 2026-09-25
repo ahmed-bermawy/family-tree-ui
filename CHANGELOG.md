@@ -5,6 +5,35 @@ All notable changes to the Family Tree application will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-09-25
+
+### Added
+- 📅 **Birth and death dates** — every person can carry a birth date and a death date, each with its own display setting: show the **full date**, the **year only**, or keep it **private**. Private dates are still stored (so ages and sorting keep working) but are never rendered. Rendering is numeric `DD/MM/YYYY` so it reads identically in English and Arabic.
+- 🕊️ **Deceased marker** — a person with a recorded death date is drawn with a dashed frame, a dove next to their name, a darkened card and a greyscale photo, so they are recognisable at a glance on a large tree. The marker shows even when the date itself is set to private.
+- 🎂 **Birthday reminders** — a badge on the editor lists every birthday falling in the next 30 days (nearest first) with the days remaining, the age they turn, and a **one-tap WhatsApp wish** that opens with the message already written. Only full dates take part; year-only and private entries are skipped.
+- 🔀 **Arrange the tree your way** — three new layout controls:
+  - siblings are ordered **automatically by birth date**, eldest first (anyone without a date sorts after dated siblings, keeping their relative order)
+  - choose whether the eldest sits **on the right or the left** (`age-desc` / `age-asc`)
+  - **drag anyone** to move them; the position is saved automatically and survives a refresh, with one click to return to the automatic arrangement
+- 🌳 **Guest mode** (`/try`) — build and explore a full tree straight from the home page with **no account**; the work is kept in the browser and **imported into the account automatically** on sign-up, so nothing is lost.
+- ✨ **Four new feature cards** on the home page (guest mode, dates, birthdays, layout) plus three matching FAQ entries, added to **both** the visible HTML and the `FAQPage` JSON-LD so the two always agree.
+
+### Changed
+- 🏠 **The home page is now the product tour for everyone, signed in or not.** It used to bounce members straight to `/trees`; it now serves the same content to all, swapping its own calls to action (builder links for visitors, "My Trees" for members).
+- 👤 **Avatar + account menu in the navigation** — the plain "Open My Trees" text button is replaced by the member's photo (falling back to their initial), their name, and a menu holding *My trees*, *My profile* and *Log out*. The same component is used on the home page, the tree list and the editor.
+- 🧭 **`/features` folded into the home page** — the two pages served identical content; `/features` now 301-redirects to `/` so there is a single canonical page to index.
+- ➕ **Hero calls to action reshaped** — "Try it now — no signup needed" is the primary action and sits at the **top** of the page, "Get Started Free" is the secondary action, and Sign In moved into the navigation bar where visitors look for it.
+- 🧹 Removed the duplicated call-to-action box at the bottom of the page.
+
+### Fixed
+- 📐 **The tree no longer rearranges itself between reloads.** The graph endpoint returned people in Postgres heap order, which shifts on every `UPDATE`/`VACUUM`, and the layout is derived from that order — so editing anyone could silently re-order the whole tree. The API now orders deterministically and the layout sorts by id as a second line of defence.
+- 🔀 **A child is laid out under one parent only.** A couple node bridging two families was being placed twice; the second placement dragged its link hundreds of pixels sideways and made links cross. Links between a parent and a child now travel almost straight.
+- 📏 **Node sizing matches the layout maths** so a child sits exactly in the middle of its parents rather than a few dozen pixels off.
+- 📱 **The order controls no longer collide with the view toolbar on phones**, and their dropdowns open **centred on screen** instead of off the edge.
+- 🖼️ **The account avatar no longer renders broken.** `avatarUrl` is stored as a relative `/uploads/...` path; it is now resolved against the API origin, with the member's initial as a fallback if the image cannot load.
+- 🚪 **Logging out no longer flashes the login page.** It clears the token and performs a single hard navigation home, without a re-render that let the protected route redirect first.
+- 📤 A failed photo upload now reports itself with a toast instead of failing silently.
+
 ## [1.6.0] - 2026-09-18
 
 ### Added

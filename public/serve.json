@@ -1,4 +1,11 @@
 {
+  "redirects": [
+    {
+      "source": "/features",
+      "destination": "/",
+      "type": 301
+    }
+  ],
   "headers": [
     {
       "source": "**",

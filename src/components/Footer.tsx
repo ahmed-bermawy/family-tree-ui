@@ -10,8 +10,8 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-500">
         <span>🌳 {t.appName} — {t.tagline}</span>
         <span className="flex items-center gap-3">
-          <Link to="/features" className="text-gray-400 hover:text-emerald-400 transition">
-            ✨ {t.features}
+          <Link to="/" className="text-gray-400 hover:text-emerald-400 transition">
+            🏠 {t.home}
           </Link>
           <Link to="/feedback" className="text-gray-400 hover:text-emerald-400 transition">
             💬 {t.feedbackTitleShort}

@@ -37,6 +37,14 @@ export const trees = {
     api.patch(`/trees/${id}`, data).then((r) => r.data),
   delete: (id: number) => api.delete(`/trees/${id}`).then((r) => r.data),
   graph: (id: number) => api.get(`/trees/${id}/graph`).then((r) => r.data),
+  /** Save the tree layout: sibling order and/or hand-dragged node positions. */
+  updateLayout: (
+    id: number,
+    data: {
+      layoutOrder?: 'age-desc' | 'age-asc';
+      nodePositions?: Record<string, { x: number; y: number }>;
+    },
+  ) => api.patch(`/trees/${id}/layout`, data).then((r) => r.data),
 };
 
 export const persons = {

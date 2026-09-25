@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { auth } from '../api/endpoints';
+import { auth, trees, persons, relationships } from '../api/endpoints';
+import { guestStore, importGuestTree } from '../utils/guestStore';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import Footer from '../components/Footer';
@@ -26,6 +27,23 @@ export default function LoginPage() {
       localStorage.setItem('token', res.access_token);
       const profile = await auth.profile();
       login(res.access_token, profile);
+
+      // Signing in from the guest builder? Move the local tree into the account.
+      if (guestStore.hasTree()) {
+        try {
+          const treeId = await importGuestTree(
+            (treeName) => trees.create(treeName),
+            (data) => persons.create(data),
+            (data) => relationships.create(data),
+            (personId, blob) =>
+              persons.uploadPhoto(personId, new File([blob], 'photo.jpg', { type: 'image/jpeg' })),
+          );
+          navigate(treeId ? `/trees/${treeId}` : '/trees');
+          return;
+        } catch {
+          // Keep the local copy so nothing is lost — the visitor can retry.
+        }
+      }
       navigate('/trees');
     } catch (err: any) {
       setError(err.response?.data?.message || t.loginFailed);

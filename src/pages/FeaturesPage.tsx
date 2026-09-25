@@ -1,13 +1,20 @@
+
 import { Link } from 'react-router-dom';
 import { useI18n } from '../i18n/I18nContext';
 import { useAuth } from '../context/AuthContext';
+import UserMenu from '../components/UserMenu';
 import { usePageMeta } from '../hooks/usePageMeta';
 import Footer from '../components/Footer';
 
 export default function FeaturesPage() {
   const { t, toggleLang } = useI18n();
   const { user } = useAuth();
-  usePageMeta('Features — Family Tree', 'Everything you can do with your family tree: build, organize, view, share, export and manage.');
+  // This page IS the home page (crawlers and signed-out visitors land here),
+  // so it carries the search-facing title/description.
+  usePageMeta(
+    '🌳 Family Tree Maker — Build, Share & Explore Your Family History',
+    'Free online family tree maker. Add relatives, upload photos, connect multiple spouses, and share your family history with a private link — in English and Arabic.',
+  );
 
   const sections = [
     {
@@ -15,6 +22,26 @@ export default function FeaturesPage() {
       desc: t.featBuildDesc,
       items: [t.featBuild1, t.featBuild2, t.featBuild3, t.featBuild4],
       gradient: 'from-emerald-500/10 to-transparent',
+    },
+    {
+      title: t.featGuestTitle,
+      desc: t.featGuestDesc,
+      items: [t.featGuest1, t.featGuest2, t.featGuest3, t.featGuest4],
+    },
+    {
+      title: t.featDatesTitle,
+      desc: t.featDatesDesc,
+      items: [t.featDates1, t.featDates2, t.featDates3, t.featDates4],
+    },
+    {
+      title: t.featBirthdaysTitle,
+      desc: t.featBirthdaysDesc,
+      items: [t.featBirthdays1, t.featBirthdays2, t.featBirthdays3, t.featBirthdays4],
+    },
+    {
+      title: t.featLayoutTitle,
+      desc: t.featLayoutDesc,
+      items: [t.featLayout1, t.featLayout2, t.featLayout3, t.featLayout4],
     },
     {
       title: t.featOrganizeTitle,
@@ -60,13 +87,24 @@ export default function FeaturesPage() {
       <nav className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <Link to="/" className="text-xl font-bold text-white hover:text-emerald-400 transition">🌳 {t.appName}</Link>
-          <div className="flex items-center gap-4">
-            <Link to="/feedback" className="text-xs text-gray-500 hover:text-emerald-400 transition">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Link to="/feedback" className="hidden sm:inline text-xs text-gray-500 hover:text-emerald-400 transition">
               💬 {t.feedbackTitleShort}
             </Link>
             <button onClick={toggleLang} className="text-xs text-gray-500 hover:text-emerald-400 transition">
               {t.langSwitch}
             </button>
+            {/* Same avatar + menu as every other page */}
+            {user ? (
+              <UserMenu />
+            ) : (
+              <Link
+                to="/login"
+                className="px-3 sm:px-4 py-1.5 text-xs font-semibold text-emerald-300 border border-emerald-600/60 hover:bg-emerald-600/20 rounded-lg transition whitespace-nowrap"
+              >
+                {t.signInBtn}
+              </Link>
+            )}
           </div>
         </div>
       </nav>
@@ -78,7 +116,7 @@ export default function FeaturesPage() {
         </div>
         <h1 className="text-3xl sm:text-5xl font-bold text-white mb-5 leading-tight">{t.featuresTitle}</h1>
         <p className="text-gray-400 max-w-2xl mx-auto leading-relaxed text-sm sm:text-base">{t.featuresDesc}</p>
-        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <div className="mt-8 flex flex-col items-center gap-4">
           {user ? (
             <Link
               to="/trees"
@@ -88,18 +126,28 @@ export default function FeaturesPage() {
             </Link>
           ) : (
             <>
-              <Link
-                to="/register"
-                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition shadow-lg hover:shadow-emerald-500/25 hover:scale-105"
-              >
-                {t.featuresGetStarted}
-              </Link>
-              <Link
-                to="/login"
-                className="px-8 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-semibold rounded-xl transition"
-              >
-                {t.signInBtn}
-              </Link>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full sm:w-auto">
+                {/* Primary action: straight into the builder, no account needed */}
+                <Link
+                  to="/try"
+                  className="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition shadow-lg hover:shadow-emerald-500/25 hover:scale-105"
+                >
+                  🚀 {t.guestTryCta}
+                </Link>
+                <Link
+                  to="/register"
+                  className="px-8 py-3.5 bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-emerald-500/50 text-gray-100 font-semibold rounded-xl transition"
+                >
+                  {t.featuresGetStarted}
+                </Link>
+              </div>
+              <p className="text-gray-500 text-xs">{t.guestTryHint}</p>
+              <p className="text-gray-400 text-xs">
+                {t.haveAccount}{' '}
+                <Link to="/login" className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2">
+                  {t.signInBtn}
+                </Link>
+              </p>
             </>
           )}
         </div>
@@ -125,28 +173,6 @@ export default function FeaturesPage() {
               </ul>
             </div>
           ))}
-        </div>
-
-        {/* CTA */}
-        <div className="mt-14 bg-gray-800/60 border border-gray-700 rounded-2xl p-8 sm:p-10 text-center">
-          <div className="text-5xl mb-4">🌳</div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">{t.featuresTryIt}</h2>
-          <p className="text-gray-400 max-w-xl mx-auto mb-6 text-sm sm:text-base">{t.treeDesc}</p>
-          {user ? (
-            <Link
-              to="/trees"
-              className="inline-block px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition shadow-lg hover:shadow-emerald-500/25 hover:scale-105"
-            >
-              🌳 {t.featuresOpenTrees}
-            </Link>
-          ) : (
-            <Link
-              to="/register"
-              className="inline-block px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition shadow-lg hover:shadow-emerald-500/25 hover:scale-105"
-            >
-              {t.featuresGetStarted}
-            </Link>
-          )}
         </div>
       </main>
 

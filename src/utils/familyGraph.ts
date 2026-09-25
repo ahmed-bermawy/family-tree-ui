@@ -10,6 +10,12 @@ import { MarkerType, type Edge, type Node } from '@xyflow/react';
 
 export const MIN_GAP = 40;
 export const GENERATION_GAP = 160;
+/**
+ * Horizontal breathing room between two separate family blocks (roots).
+ * Wider than MIN_GAP on purpose: families are separate trees, and packing
+ * them at sibling distance made their links run side by side.
+ */
+export const CLUSTER_GAP = MIN_GAP;
 
 /**
  * Colours used for parent→child links. Every parent gets its own stable
@@ -46,7 +52,16 @@ export function getNodeWidth(nodeId: string, nodes: Node[]): number {
 }
 
 export interface GraphPayload {
-  nodes: { id: number; name: string; gender?: string; photo?: string }[];
+  nodes: {
+    id: number;
+    name: string;
+    gender?: string;
+    photo?: string | null;
+    birthDate?: string | null;
+    birthPrecision?: string | null;
+    deathDate?: string | null;
+    deathPrecision?: string | null;
+  }[];
   edges: { id: number; type: string; from: number; to: number }[];
 }
 
@@ -70,7 +85,14 @@ export function buildFamilyGraph(
   graph: GraphPayload,
   onNodeClick?: (id: string) => void,
 ): BuiltGraph {
-  const spouseEdges = graph.edges.filter((e) => e.type === 'spouse');
+  // Deterministic input order. The layout is derived from it, so it must not
+  // depend on how the data happened to arrive: Postgres heap order shifts on
+  // every UPDATE/VACUUM, and localStorage keeps insertion order. Sorting by id
+  // keeps the tree identical between reloads.
+  const graphNodes = [...graph.nodes].sort((a, b) => a.id - b.id);
+  const graphEdges = [...graph.edges].sort((a, b) => a.id - b.id);
+
+  const spouseEdges = graphEdges.filter((e) => e.type === 'spouse');
 
   // ── polygamy detection ────────────────────────────────────────────────
   const spousePartners = new Map<string, string[]>();
@@ -84,7 +106,7 @@ export function buildFamilyGraph(
   });
 
   const polygamous = new Set<string>(); // husbands with more than one wife
-  graph.nodes.forEach((p) => {
+  graphNodes.forEach((p) => {
     if (p.gender === 'male' && (spousePartners.get(String(p.id)) || []).length > 1) {
       polygamous.add(String(p.id));
     }
@@ -98,7 +120,7 @@ export function buildFamilyGraph(
 
   // ── parent lookup (both relationship conventions) ─────────────────────
   const parentsOf = new Map<string, string[]>();
-  graph.edges.forEach((e) => {
+  graphEdges.forEach((e) => {
     if (e.type === 'parent') {
       const c = String(e.to);
       if (!parentsOf.has(c)) parentsOf.set(c, []);
@@ -114,8 +136,8 @@ export function buildFamilyGraph(
   const coupled = new Set<number>();
   const coupleMap = new Map<string, { id: string; p1: any; p2: any }>();
   spouseEdges.forEach((se, idx) => {
-    const p1 = graph.nodes.find((n) => n.id === se.from);
-    const p2 = graph.nodes.find((n) => n.id === se.to);
+    const p1 = graphNodes.find((n) => n.id === se.from);
+    const p2 = graphNodes.find((n) => n.id === se.to);
     if (!p1 || !p2) return;
     if (polygamousIds.has(String(se.from)) || polygamousIds.has(String(se.to))) return;
     const coupleId = `couple-${idx}`;
@@ -130,8 +152,8 @@ export function buildFamilyGraph(
   //  and a couple node holds two different people)
   const parentsByPerson = new Map<string, string[]>();
   const personGenders = new Map<string, string>();
-  graph.nodes.forEach((p) => personGenders.set(String(p.id), p.gender || ''));
-  graph.edges.forEach((e) => {
+  graphNodes.forEach((p) => personGenders.set(String(p.id), p.gender || ''));
+  graphEdges.forEach((e) => {
     if (e.type === 'spouse') return;
     const parentId = e.type === 'child' ? String(e.to) : String(e.from);
     const childId = e.type === 'child' ? String(e.from) : String(e.to);
@@ -144,7 +166,7 @@ export function buildFamilyGraph(
   // ── child links (parent → child), re-attached to the mother ───────────
   const childLinks: { parent: string; child: string; type: string }[] = [];
   const seenPairs = new Set<string>();
-  graph.edges.forEach((e) => {
+  graphEdges.forEach((e) => {
     if (e.type === 'spouse') return;
     const parentId = e.type === 'child' ? String(e.to) : String(e.from);
     const childId = e.type === 'child' ? String(e.from) : String(e.to);
@@ -168,7 +190,7 @@ export function buildFamilyGraph(
   // ── nodes ─────────────────────────────────────────────────────────────
   const nodes: Node[] = [];
   const addedCouples = new Set<string>();
-  graph.nodes.forEach((p) => {
+  graphNodes.forEach((p) => {
     if (coupled.has(p.id)) {
       const c = coupleMap.get(String(p.id));
       if (c && !addedCouples.has(c.id)) {
@@ -178,8 +200,26 @@ export function buildFamilyGraph(
           type: 'coupleNode',
           position: { x: 0, y: 0 },
           data: {
-            person1: { id: String(c.p1.id), name: c.p1.name, gender: c.p1.gender || '', photo: c.p1.photo || '' },
-            person2: { id: String(c.p2.id), name: c.p2.name, gender: c.p2.gender || '', photo: c.p2.photo || '' },
+            person1: {
+              id: String(c.p1.id),
+              name: c.p1.name,
+              gender: c.p1.gender || '',
+              photo: c.p1.photo || '',
+              birthDate: c.p1.birthDate ?? null,
+              birthPrecision: c.p1.birthPrecision ?? null,
+              deathDate: c.p1.deathDate ?? null,
+              deathPrecision: c.p1.deathPrecision ?? null,
+            },
+            person2: {
+              id: String(c.p2.id),
+              name: c.p2.name,
+              gender: c.p2.gender || '',
+              photo: c.p2.photo || '',
+              birthDate: c.p2.birthDate ?? null,
+              birthPrecision: c.p2.birthPrecision ?? null,
+              deathDate: c.p2.deathDate ?? null,
+              deathPrecision: c.p2.deathPrecision ?? null,
+            },
             onClick: onNodeClick ? () => onNodeClick(c.id) : undefined,
           },
         });
@@ -193,6 +233,10 @@ export function buildFamilyGraph(
           name: p.name,
           gender: p.gender,
           photo: p.photo || '',
+          birthDate: p.birthDate ?? null,
+          birthPrecision: p.birthPrecision ?? null,
+          deathDate: p.deathDate ?? null,
+          deathPrecision: p.deathPrecision ?? null,
           onClick: onNodeClick ? () => onNodeClick(String(p.id)) : undefined,
         },
       });
@@ -251,8 +295,70 @@ export function buildFamilyGraph(
   };
 }
 
+/** The oldest birth date recorded inside a node (a couple node holds two people). */
+function nodeBirthKey(n: Node): string {
+  const d = n.data as any;
+  const dates = [d?.birthDate, d?.person1?.birthDate, d?.person2?.birthDate]
+    .filter(Boolean)
+    .map((x: unknown) => String(x).slice(0, 10))
+    .filter((x: string) => /^\d{4}-\d{2}-\d{2}$/.test(x));
+  return dates.length ? dates.sort()[0] : '';
+}
+
 /** Position the graph: generations top→bottom, wives in their husband's row. */
-export function layoutFamilyGraph(nodes: Node[], edges: Edge[]): Node[] {
+export interface LayoutOptions {
+  /** "age-desc" = eldest on the RIGHT (default) · "age-asc" = eldest on the left. */
+  order?: 'age-desc' | 'age-asc';
+  /** Hand-dragged positions, keyed by a stable node key ("p:222" · "c:222-224"). */
+  saved?: Record<string, { x: number; y: number }>;
+}
+
+/**
+ * A STABLE key for a node's saved position — people by their id, couples by
+ * their two ids sorted. React Flow's own ids for couple nodes are positional
+ * ("couple-3"), so they shift whenever anyone is added; these keys do not.
+ */
+export function nodeKey(node: Node): string {
+  const d = node.data as any;
+  if (d?.person1?.id != null && d?.person2?.id != null) {
+    const ids = [Number(d.person1.id), Number(d.person2.id)].sort((a, b) => a - b);
+    return `c:${ids[0]}-${ids[1]}`;
+  }
+  return `p:${node.id}`;
+}
+
+export function layoutFamilyGraph(
+  nodes: Node[],
+  edges: Edge[],
+  opts: LayoutOptions = {},
+): Node[] {
+  const order = opts.order ?? 'age-desc';
+  const saved = opts.saved ?? {};
+
+  /**
+   * Slot centres for one row. "age-desc" lays them out right → left so the
+   * eldest (index 0) lands on the RIGHT, matching Arabic reading order;
+   * "age-asc" mirrors it. One helper keeps every row consistent.
+   */
+  const slotsFor = (widths: number[], span: number, gap: number): number[] => {
+    const slots: number[] = [];
+    if (order === 'age-asc') {
+      let cur = -span / 2;
+      for (let i = 0; i < widths.length; i++) {
+        slots[i] = cur + widths[i] / 2;
+        cur += widths[i] + gap;
+      }
+    } else {
+      let cur = span / 2;
+      for (let i = 0; i < widths.length; i++) {
+        cur -= widths[i];
+        slots[i] = cur + widths[i] / 2;
+        cur -= gap;
+      }
+    }
+    return slots;
+  };
+
   const spouseEdges = edges.filter((e) => e.data?.type === 'spouse');
   const hierarchyEdges = edges.filter((e) => e.data?.type !== 'spouse');
 
@@ -264,6 +370,41 @@ export function layoutFamilyGraph(nodes: Node[], edges: Edge[]): Node[] {
     if (!parents.has(e.target)) parents.set(e.target, []);
     parents.get(e.target)!.push(e.source);
   }
+
+  // ── siblings: eldest first ────────────────────────────────────────────
+  // The relationship order says nothing about age, so each parent's children
+  // are sorted by birth date. Anyone without a date keeps their relative
+  // position (Array.sort is stable), and dated siblings come before undated
+  // ones. Without this the row reflected the order rows happened to be added.
+  const birthKey = new Map<string, string>();
+  for (const n of nodes) birthKey.set(n.id, nodeBirthKey(n));
+
+  for (const [parentId, kidIds] of children) {
+    children.set(
+      parentId,
+      [...kidIds].sort((a, b) => {
+        const ba = birthKey.get(a) || '';
+        const bb = birthKey.get(b) || '';
+        if (ba && bb && ba !== bb) return ba < bb ? -1 : 1;
+        if (ba && !bb) return -1;
+        if (!ba && bb) return 1;
+        return 0; // both unknown (or identical) → keep insertion order
+      }),
+    );
+  }
+
+  // ── one layout parent per node ────────────────────────────────────────
+  // A couple node "bridges" two families: its links arrive from both, so a
+  // naive layout places it twice and the second placement is what bent the
+  // link right across the tree (measured: a single link travelling 388px
+  // sideways). Every node is therefore LAID OUT under one primary parent —
+  // the other parent still draws its link, it just reserves no space.
+  const primaryParent = new Map<string, string>();
+  for (const [parentId, kidIds] of children) {
+    for (const k of kidIds) if (!primaryParent.has(k)) primaryParent.set(k, parentId);
+  }
+  const kidsUnder = (parentId: string): string[] =>
+    (children.get(parentId) || []).filter((k) => primaryParent.get(k) === parentId);
 
   // BFS levels
   const level = new Map<string, number>();
@@ -288,9 +429,12 @@ export function layoutFamilyGraph(nodes: Node[], edges: Edge[]): Node[] {
 
   const positioned = new Map<string, { x: number; y: number }>();
 
+  /** A merged couple node — a person who married, whose spouse may bring their own line. */
+  const isCouple = (id: string) => id.startsWith('couple-');
+
   function calcSubtreeWidth(nodeId: string): number {
     const myWidth = getNodeWidth(nodeId, nodes);
-    const kidList = children.get(nodeId) || [];
+    const kidList = kidsUnder(nodeId);
     if (kidList.length === 0) return myWidth;
     const kidWidths = kidList.map((k) => calcSubtreeWidth(k));
     const span = kidWidths.reduce((a, b) => a + b, 0) + (kidList.length - 1) * MIN_GAP;
@@ -298,15 +442,33 @@ export function layoutFamilyGraph(nodes: Node[], edges: Edge[]): Node[] {
   }
 
   function positionNode(nodeId: string, centerX: number, y: number) {
-    positioned.set(nodeId, { x: centerX - getNodeWidth(nodeId, nodes) / 2, y });
-    const kidList = children.get(nodeId) || [];
-    if (kidList.length === 0) return;
+    const myWidth = getNodeWidth(nodeId, nodes);
+    const kidList = kidsUnder(nodeId);
+    if (kidList.length === 0) {
+      positioned.set(nodeId, { x: centerX - myWidth / 2, y });
+      return;
+    }
+
     const kidWidths = kidList.map((k) => calcSubtreeWidth(k));
     const span = kidWidths.reduce((a, b) => a + b, 0) + (kidList.length - 1) * MIN_GAP;
-    let kidX = centerX - span / 2;
+
+    // Slots honour the chosen sibling order (eldest right by default).
+    const slots = slotsFor(kidWidths, span, MIN_GAP);
+
+    // Centre the parent on its BLOOD children only. A child who married into
+    // another family (a couple node like "حسن ♥ هدى") is still drawn in this
+    // row, but it also belongs to the spouse's line — letting it pull the
+    // parent sideways stranded the real siblings far away from their father.
+    // The parent lands on the anchor point itself, so it lines up exactly with
+    // the middle of its own children.
+    const bloodIdx = kidList.map((k, i) => (isCouple(k) ? -1 : i)).filter((i) => i >= 0);
+    const anchor =
+      bloodIdx.length > 0 ? (slots[bloodIdx[0]] + slots[bloodIdx[bloodIdx.length - 1]]) / 2 : 0;
+    const shift = -anchor;
+
+    positioned.set(nodeId, { x: centerX + shift + anchor - myWidth / 2, y });
     for (let i = 0; i < kidList.length; i++) {
-      positionNode(kidList[i], kidX + kidWidths[i] / 2, y + GENERATION_GAP);
-      kidX += kidWidths[i] + MIN_GAP;
+      positionNode(kidList[i], centerX + shift + slots[i], y + GENERATION_GAP);
     }
   }
 
@@ -326,11 +488,10 @@ export function layoutFamilyGraph(nodes: Node[], edges: Edge[]): Node[] {
     positionNode(roots[0].id, 0, 0);
   } else if (roots.length > 1) {
     const rootWidths = roots.map((r) => calcSubtreeWidth(r.id));
-    const total = rootWidths.reduce((a, b) => a + b, 0) + (roots.length - 1) * MIN_GAP;
-    let x = -total / 2;
+    const total = rootWidths.reduce((a, b) => a + b, 0) + (roots.length - 1) * CLUSTER_GAP;
+    const rootSlots = slotsFor(rootWidths, total, CLUSTER_GAP);
     for (let i = 0; i < roots.length; i++) {
-      positionNode(roots[i].id, x + rootWidths[i] / 2, 0);
-      x += rootWidths[i] + MIN_GAP;
+      positionNode(roots[i].id, rootSlots[i], 0);
     }
   }
 
@@ -339,7 +500,7 @@ export function layoutFamilyGraph(nodes: Node[], edges: Edge[]): Node[] {
     visited.add(nodeId);
     const p = positioned.get(nodeId) || { x: 0, y: newY };
     positioned.set(nodeId, { x: p.x + dx, y: newY });
-    for (const kid of children.get(nodeId) || []) {
+    for (const kid of kidsUnder(nodeId)) {
       moveSubtree(kid, dx, newY + GENERATION_GAP, visited);
     }
   }
@@ -376,18 +537,21 @@ export function layoutFamilyGraph(nodes: Node[], edges: Edge[]): Node[] {
       ([id, p]) =>
         id !== husbandId &&
         !familyNodes.has(id) &&
+        // Someone who has parents of their own belongs to their own family —
+        // a child of another branch sitting in this row must not be mistaken
+        // for a stranger and shoved to the far edge of the tree.
+        !(parents.get(id)?.length) &&
         Math.abs(p.y - wifeY) < 1,
     );
 
-    let cursor = husbandCenter - totalW / 2;
+    const wifeSlots = slotsFor(widths, totalW, MIN_GAP);
     for (let i = 0; i < ordered.length; i++) {
       const wifeId = ordered[i];
       const wifeW = getNodeWidth(wifeId, nodes);
       const subW = widths[i];
-      const targetX = cursor + (subW - wifeW) / 2;
+      const targetX = husbandCenter + wifeSlots[i] + (subW - wifeW) / 2 - subW / 2;
       const wp = positioned.get(wifeId) || { x: 0, y: wifeY };
       moveSubtree(wifeId, targetX - wp.x, wifeY);
-      cursor += subW + MIN_GAP;
     }
 
     // Push unrelated nodes in that row to the right of the wives block
@@ -471,5 +635,14 @@ export function layoutFamilyGraph(nodes: Node[], edges: Edge[]): Node[] {
     for (const [id, p] of positioned) positioned.set(id, { x: p.x + shift, y: p.y });
   }
 
-  return nodes.map((n) => ({ ...n, position: positioned.get(n.id) || { x: 0, y: 0 } }));
+  // Hand-dragged positions win over the computed ones. Everything the user
+  // never moved still follows the automatic layout, so adding a person does
+  // not disturb the parts they arranged themselves.
+  return nodes.map((n) => {
+    const manual = saved[nodeKey(n)];
+    return {
+      ...n,
+      position: manual ? { x: manual.x, y: manual.y } : positioned.get(n.id) || { x: 0, y: 0 },
+    };
+  });
 }

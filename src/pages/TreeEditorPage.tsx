@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ReactFlow,
@@ -14,12 +14,14 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { trees, persons, relationships } from '../api/endpoints';
+import { apiSource, guestSource } from '../api/dataSource';
 import UserMenu from '../components/UserMenu';
 import PersonNode from '../components/PersonNode';
 import CoupleNode from '../components/CoupleNode';
 import NodeContextMenu from '../components/NodeContextMenu';
 import PersonFormModal from '../components/PersonFormModal';
+import DateField from '../components/DateField';
+import { dateToApi, dateFromApi, EMPTY_DATE, type DateEdit } from '../utils/lifeDates';
 import LinkPersonModal from '../components/LinkPersonModal';
 import TreeToolbar from '../components/TreeToolbar';
 import ShareModal from '../components/ShareModal';
@@ -29,7 +31,13 @@ import Toast from '../components/Toast';
 import { toCanvas } from 'html-to-image';
 import { useI18n } from '../i18n/I18nContext';
 import { resolveDeletePersonIds } from '../utils/deleteResolution';
-import { buildFamilyGraph, layoutFamilyGraph } from '../utils/familyGraph';
+import { buildFamilyGraph, layoutFamilyGraph, nodeKey } from '../utils/familyGraph';
+import {
+  upcomingBirthdays,
+  whatsappGreeting,
+  formatBirthday,
+  type BirthdayPerson,
+} from '../utils/birthdays';
 import { isValidName, stripDigits } from '../utils/nameValidation';
 
 const nodeTypes = { personNode: PersonNode, coupleNode: CoupleNode };
@@ -37,8 +45,12 @@ const nodeTypes = { personNode: PersonNode, coupleNode: CoupleNode };
 export default function TreeEditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t, toggleLang } = useI18n();
+  const { t, lang, toggleLang } = useI18n();
   const treeId = Number(id);
+  // No :id means we are on /try — the guest builder. Everything is kept in
+  // localStorage and nothing is sent to the server until the visitor signs up.
+  const isGuest = !id;
+  const ds = useMemo(() => (isGuest ? guestSource : apiSource(treeId)), [isGuest, treeId]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -77,6 +89,12 @@ export default function TreeEditorPage() {
   } | null>(null);
   const [formName, setFormName] = useState('');
   const [formGender, setFormGender] = useState('');
+  const [formBirth, setFormBirth] = useState<DateEdit>(EMPTY_DATE);
+  const [formDeath, setFormDeath] = useState<DateEdit>(EMPTY_DATE);
+  const [editBirth, setEditBirth] = useState<DateEdit>(EMPTY_DATE);
+  const [editBirth2, setEditBirth2] = useState<DateEdit>(EMPTY_DATE);
+  const [editDeath, setEditDeath] = useState<DateEdit>(EMPTY_DATE);
+  const [editDeath2, setEditDeath2] = useState<DateEdit>(EMPTY_DATE);
   const [showShareModal, setShowShareModal] = useState(false);
 
   // Link existing person modal
@@ -122,7 +140,7 @@ export default function TreeEditorPage() {
     setCropModal(null);
     try {
       const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
-      await persons.uploadPhoto(personId, file);
+      await ds.uploadPhoto(personId, file);
       loadGraph();
       setToast({ message: t.photoUploaded, type: 'success' });
     } catch {
@@ -130,32 +148,147 @@ export default function TreeEditorPage() {
     }
   };
 
+  // ── layout: automatic order + hand-dragged positions ──────────────────
+  // Saved positions are merged over the automatic layout, so a refresh keeps
+  // whatever the user arranged by hand while everything they never moved
+  // still follows the automatic order.
+  const [layoutOrder, setLayoutOrder] = useState<'age-desc' | 'age-asc'>('age-desc');
+  const [savedPositions, setSavedPositions] = useState<
+    Record<string, { x: number; y: number }>
+  >({});
+  const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
+  const [birthdayMenuOpen, setBirthdayMenuOpen] = useState(false);
+  const savedPositionsRef = useRef(savedPositions);
+  savedPositionsRef.current = savedPositions;
+
+  // Birthdays in the next 30 days. Couple nodes carry two people, both of
+  // whom may have a date; anyone without a FULL date is skipped inside.
+  const upcoming = useMemo(() => {
+    const people: BirthdayPerson[] = [];
+    for (const n of nodes) {
+      const d = n.data as any;
+      if (d?.person1) {
+        for (const half of [d.person1, d.person2]) {
+          if (half?.id != null) {
+            people.push({
+              id: Number(half.id),
+              name: half.name,
+              birthDate: half.birthDate,
+              birthPrecision: half.birthPrecision,
+            });
+          }
+        }
+      } else if (d?.id != null || n.id) {
+        people.push({
+          id: Number(d?.personId ?? n.id),
+          name: String(d?.name ?? ''),
+          birthDate: d?.birthDate,
+          birthPrecision: d?.birthPrecision,
+        });
+      }
+    }
+    return upcomingBirthdays(people, 30);
+  }, [nodes]);
+
   const loadGraph = useCallback(async () => {
     try {
-      const tree = await trees.get(treeId);
+      const tree = await ds.getTree();
       setTreeName(tree.name);
       setShareCode(tree.shareCode || '');
-      const graph = await trees.graph(treeId);
+      const graph = await ds.getGraph();
 
       // Build nodes/edges (couples, polygamy, child links) + auto layout
       const built = buildFamilyGraph(graph);
       setGraphInfo({ parentsByPerson: built.parentsByPerson, personGenders: built.personGenders });
-      const laidOut = layoutFamilyGraph(built.nodes, built.edges);
+      const treeOrder = (graph.layoutOrder as 'age-desc' | 'age-asc') || 'age-desc';
+      const saved = graph.nodePositions || {};
+      setLayoutOrder(treeOrder);
+      setSavedPositions(saved);
+      savedPositionsRef.current = saved;
+      const laidOut = layoutFamilyGraph(built.nodes, built.edges, {
+        order: treeOrder,
+        saved,
+      });
       setNodes(laidOut);
       setEdges(built.edges);
       // Re-fit the view so the whole tree stays on screen after any change
       // (especially polygamous families, which grow sideways).
       setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 60);
     } catch {
-      navigate('/trees');
+      // A guest tree always exists locally — only a missing saved tree redirects.
+      if (!isGuest) navigate('/trees');
     } finally {
       setLoading(false);
     }
-  }, [treeId, navigate, setNodes, setEdges]);
+  }, [ds, isGuest, navigate, setNodes, setEdges]);
 
   useEffect(() => {
     loadGraph();
   }, [loadGraph]);
+
+  /** Re-run the layout with a new sibling order (persisted server-side). */
+  const changeLayoutOrder = useCallback(
+    async (next: 'age-desc' | 'age-asc') => {
+      if (next === layoutOrder) return;
+      setLayoutOrder(next);
+      const graph = await ds.getGraph();
+      const rebuilt = buildFamilyGraph(graph);
+      setNodes(
+        layoutFamilyGraph(rebuilt.nodes, rebuilt.edges, {
+          order: next,
+          saved: savedPositionsRef.current,
+        }),
+      );
+      setEdges(rebuilt.edges);
+      setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 60);
+      try {
+        await ds.updateLayout({ layoutOrder: next });
+        setToast({ message: t.layoutSaved });
+      } catch {
+        setToast({ message: t.layoutSaveFailed });
+      }
+    },
+    [ds, layoutOrder, setNodes, setEdges, fitView, t],
+  );
+
+  /** Throw away every hand-dragged position and go back to the auto layout. */
+  const resetLayout = useCallback(async () => {
+    savedPositionsRef.current = {};
+    setSavedPositions({});
+    const graph = await ds.getGraph();
+    const rebuilt = buildFamilyGraph(graph);
+    setNodes(
+      layoutFamilyGraph(rebuilt.nodes, rebuilt.edges, {
+        order: layoutOrder,
+        saved: {},
+      }),
+    );
+    setEdges(rebuilt.edges);
+    setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 60);
+    try {
+      await ds.updateLayout({ nodePositions: {} });
+      setToast({ message: t.layoutReset });
+    } catch {
+      setToast({ message: t.layoutSaveFailed });
+    }
+  }, [ds, layoutOrder, setNodes, setEdges, fitView, t]);
+
+  /** Remember where the user dropped a node so a refresh keeps it there. */
+  const onNodeDragStop = useCallback(
+    (_evt: any, node: any) => {
+      const key = nodeKey(node);
+      const next = {
+        ...savedPositionsRef.current,
+        [key]: { x: Math.round(node.position.x), y: Math.round(node.position.y) },
+      };
+      savedPositionsRef.current = next;
+      setSavedPositions(next);
+      ds.updateLayout({ nodePositions: next }).catch(() => {
+        setToast({ message: t.layoutSaveFailed });
+      });
+    },
+    [ds, t],
+  );
 
   const deletePerson = useCallback(
     async (nodeId: string) => {
@@ -170,11 +303,11 @@ export default function TreeEditorPage() {
         onConfirm: async () => {
           setConfirmAction(null);
           try {
-            // Single call — server cascades to children & grandchildren
+            // Single call — the store cascades to children & grandchildren
             if (personIds.length === 1) {
-              await persons.delete(personIds[0]);
+              await ds.deletePerson(personIds[0]);
             } else {
-              await persons.batchDelete(personIds);
+              await ds.batchDelete(personIds);
             }
             loadGraph();
           } catch (err: any) {
@@ -183,7 +316,7 @@ export default function TreeEditorPage() {
         },
       });
     },
-    [loadGraph, nodes, t],
+    [ds, loadGraph, nodes, t],
   );
 
   const renamePerson = useCallback(
@@ -199,17 +332,20 @@ export default function TreeEditorPage() {
         setToast({ message: t.nameInvalidChars });
         return;
       }
+      // Both dates for each person: the clicked half (1) and, in a couple, the other half (2)
+      const d1 = { ...dateToApi(editBirth, 'birth'), ...dateToApi(editDeath, 'death') };
+      const d2 = { ...dateToApi(editBirth2, 'birth'), ...dateToApi(editDeath2, 'death') };
       try {
         if (nodeId.startsWith('couple-')) {
-          // Update both persons in the couple (name + gender)
+          // Update both persons in the couple (name + gender + birth date)
           if (name1) {
-            await persons.update(editPerson1Id, { name: name1, gender: editGender1 || undefined });
+            await ds.updatePerson(editPerson1Id, { name: name1, gender: editGender1 || undefined, ...d1 });
           }
           if (name2 && editPerson2Id) {
-            await persons.update(editPerson2Id, { name: name2, gender: editGender2 || undefined });
+            await ds.updatePerson(editPerson2Id, { name: name2, gender: editGender2 || undefined, ...d2 });
           }
         } else {
-          await persons.update(Number(nodeId), { name: name1, gender: editGender1 || undefined });
+          await ds.updatePerson(Number(nodeId), { name: name1, gender: editGender1 || undefined, ...d1 });
         }
         setEditingNode(null);
         loadGraph();
@@ -217,7 +353,8 @@ export default function TreeEditorPage() {
         setToast({ message: err.response?.data?.message || t.failed });
       }
     },
-    [loadGraph, t, editPerson1Id, editPerson2Id, editGender1, editGender2],
+    [ds, loadGraph, t, editPerson1Id, editPerson2Id, editGender1, editGender2,
+     editBirth, editBirth2, editDeath, editDeath2],
   );
 
   const onNodeClick = useCallback(
@@ -262,18 +399,24 @@ export default function TreeEditorPage() {
   const addFirstPerson = () => {
     setFormName('');
     setFormGender('');
+    setFormBirth(EMPTY_DATE);
+    setFormDeath(EMPTY_DATE);
     setFormModal({ mode: 'addFirst' });
   };
 
   const addRootPerson = () => {
     setFormName('');
     setFormGender('');
+    setFormBirth(EMPTY_DATE);
+    setFormDeath(EMPTY_DATE);
     setFormModal({ mode: 'addRoot' });
   };
 
   const openAddRelationModal = (type: string, targetNodeId: string) => {
     setFormName('');
     setFormGender('');
+    setFormBirth(EMPTY_DATE);
+    setFormDeath(EMPTY_DATE);
     setFormModal({ mode: 'addRelation', relationType: type, targetNodeId });
   };
 
@@ -334,7 +477,7 @@ export default function TreeEditorPage() {
       }
       // Link the target person as a child of every parent (inherits all parents)
       for (const parentId of parentIds) {
-        await relationships.create({
+        await ds.createRelationship({
           fromPersonId: targetPersonId,
           toPersonId: parentId,
           type: 'child',
@@ -347,7 +490,7 @@ export default function TreeEditorPage() {
     }
 
     try {
-      await relationships.create({ fromPersonId: fromId, toPersonId: toId, type: relType });
+      await ds.createRelationship({ fromPersonId: fromId, toPersonId: toId, type: relType });
       // An existing person linked as a child also gets the other parent
       if (relType === 'child') {
         await linkOtherParent(fromId, targetPersonId);
@@ -406,7 +549,7 @@ export default function TreeEditorPage() {
     const spouses = spousesOfPerson(parentId);
     if (spouses.length !== 1) return;
     try {
-      await relationships.create({
+      await ds.createRelationship({
         fromPersonId: childId,
         toPersonId: spouses[0],
         type: 'child',
@@ -431,7 +574,7 @@ export default function TreeEditorPage() {
     const spouses = spousesOfPerson(parentId);
     if (spouses.length !== 1) return;
     try {
-      await relationships.create({
+      await ds.createRelationship({
         fromPersonId: childId,
         toPersonId: spouses[0],
         type: 'child',
@@ -464,7 +607,12 @@ export default function TreeEditorPage() {
     const gender = formGender;
 
     try {
-      const newPerson = await persons.create({ name, treeId, gender });
+      const newPerson = await ds.createPerson({
+        name,
+        gender,
+        ...dateToApi(formBirth, 'birth'),
+        ...dateToApi(formDeath, 'death'),
+      });
 
       if (mode === 'addRelation' && formModal.targetNodeId && formModal.relationType) {
         const type = formModal.relationType;
@@ -482,7 +630,7 @@ export default function TreeEditorPage() {
           const parents = parentsOfPerson(targetPersonId);
           if (parents.length === 0) {
             setToast({ message: t.noParentFound });
-            await persons.delete(newPerson.id);
+            await ds.deletePerson(newPerson.id);
             setFormModal(null);
             return;
           }
@@ -496,7 +644,7 @@ export default function TreeEditorPage() {
         }
 
         for (const link of links) {
-          await relationships.create(link);
+          await ds.createRelationship(link);
         }
         // Keep both parents in sync, whichever end was added
         if (type === 'child') await linkOtherParent(newPerson.id, targetPersonId);
@@ -649,12 +797,12 @@ export default function TreeEditorPage() {
   };
 
   return (
-    <div className="h-screen bg-gray-900 flex flex-col">
+    <div className="h-screen bg-gray-900 flex flex-col overflow-x-hidden">
       {/* Navbar */}
       <nav className="border-b border-gray-800 bg-gray-900/90 backdrop-blur-sm px-2 sm:px-4 py-2 flex items-center justify-between z-10 gap-1">
         <div className="flex items-center gap-1 sm:gap-4 min-w-0">
           <button
-            onClick={() => navigate('/trees')}
+            onClick={() => navigate(isGuest ? '/' : '/trees')}
             className="text-gray-400 hover:text-white transition text-xs sm:text-sm whitespace-nowrap"
           >
             {t.back}
@@ -671,15 +819,34 @@ export default function TreeEditorPage() {
                 className="px-1.5 sm:px-3 py-1 text-[10px] sm:text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition whitespace-nowrap">
                 {t.print}
               </button>
-              <button onClick={handleCopyShareLink}
-                className="px-1.5 sm:px-3 py-1 text-[10px] sm:text-xs bg-emerald-700 hover:bg-emerald-600 text-emerald-200 rounded-lg transition whitespace-nowrap">
-                {t.share}
-              </button>
+              {/* A guest tree has no share code yet — sharing arrives with the account */}
+              {!isGuest && (
+                <button onClick={handleCopyShareLink}
+                  className="px-1.5 sm:px-3 py-1 text-[10px] sm:text-xs bg-emerald-700 hover:bg-emerald-600 text-emerald-200 rounded-lg transition whitespace-nowrap">
+                  {t.share}
+                </button>
+              )}
             </>
           )}
-          <UserMenu />
+          {isGuest ? (
+            <button
+              onClick={() => navigate('/register?from=guest')}
+              className="px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition whitespace-nowrap"
+            >
+              💾 {t.guestSave}
+            </button>
+          ) : (
+            <UserMenu />
+          )}
         </div>
       </nav>
+
+      {/* Guest banner */}
+      {isGuest && (
+        <div className="bg-emerald-950/50 border-b border-emerald-800/40 px-3 py-1.5 text-center text-[10px] sm:text-xs text-emerald-300">
+          👋 {t.guestBanner}
+        </div>
+      )}
 
       {/* Canvas */}
       <div className="flex-1 relative" ref={reactFlowWrapper}>
@@ -709,6 +876,7 @@ export default function TreeEditorPage() {
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onNodeClick={onNodeClick}
+              onNodeDragStop={onNodeDragStop}
               onPaneClick={() => setContextMenu(null)}
               nodeTypes={nodeTypes}
               fitView
@@ -727,6 +895,147 @@ export default function TreeEditorPage() {
 
             {/* View Toolbar */}
             <TreeToolbar wrapperRef={reactFlowWrapper} />
+
+            {/* Layout controls — sibling order + back to auto arrangement.
+                A custom dropdown (not a native <select>): the browser paints
+                option lists with system colours, which left the unselected
+                entry barely visible on the dark UI. */}
+            <div className="absolute top-24 sm:top-3 left-3 z-10 flex flex-wrap items-center gap-1.5 sm:gap-2 max-w-[calc(100%-1.5rem)] sm:max-w-[60%]">
+              <div className="relative">
+                <button
+                  onClick={() => setLayoutMenuOpen((v) => !v)}
+                  className="flex items-center gap-1 sm:gap-1.5 bg-gray-800/95 hover:bg-gray-700 border border-gray-600 rounded-lg px-2 sm:px-2.5 py-1.5 shadow-lg transition whitespace-nowrap"
+                  aria-haspopup="listbox"
+                  aria-expanded={layoutMenuOpen}
+                >
+                  <span className="text-sm leading-none">🔀</span>
+                  <span className="hidden sm:inline text-[11px] text-gray-400">{t.layoutTitle}</span>
+                  <span className="text-[11px] sm:text-xs text-gray-100 font-medium">
+                    {layoutOrder === 'age-desc' ? t.layoutAgeDesc : t.layoutAgeAsc}
+                  </span>
+                  <span className="text-gray-400 text-[9px] leading-none">▼</span>
+                </button>
+
+                {layoutMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-20" onClick={() => setLayoutMenuOpen(false)} />
+                    <div
+                      role="listbox"
+                      className="fixed sm:absolute top-[204px] sm:top-full left-0 right-0 mx-auto sm:left-0 sm:right-auto sm:mx-0 sm:mt-1 z-30 bg-gray-800 border border-gray-600 rounded-lg shadow-2xl overflow-hidden min-w-[180px] max-w-[calc(100vw-1.5rem)]"
+                    >
+                      {(['age-desc', 'age-asc'] as const).map((v) => {
+                        const active = layoutOrder === v;
+                        return (
+                          <button
+                            key={v}
+                            role="option"
+                            aria-selected={active}
+                            onClick={() => {
+                              changeLayoutOrder(v);
+                              setLayoutMenuOpen(false);
+                            }}
+                            className={`w-full flex items-center gap-2 text-start px-3 py-2 text-xs transition ${
+                              active
+                                ? 'bg-emerald-600/25 text-emerald-100 font-semibold'
+                                : 'text-gray-100 hover:bg-gray-700'
+                            }`}
+                          >
+                            <span className="w-3.5 text-emerald-400">{active ? '✓' : ''}</span>
+                            {v === 'age-desc' ? t.layoutAgeDesc : t.layoutAgeAsc}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <button
+                onClick={resetLayout}
+                title={t.layoutResetBtn}
+                aria-label={t.layoutResetBtn}
+                className="flex items-center gap-1 bg-gray-800/95 hover:bg-gray-700 border border-gray-600 text-gray-100 text-[11px] sm:text-xs rounded-lg px-2 sm:px-2.5 py-1.5 shadow-lg transition whitespace-nowrap"
+              >
+                <span className="text-sm leading-none">🔄</span>
+                <span className="hidden sm:inline">{t.layoutResetBtn}</span>
+              </button>
+
+              {/* Upcoming birthdays — 🎂 badge + the list */}
+              <div className="relative">
+                <button
+                  onClick={() => setBirthdayMenuOpen((v) => !v)}
+                  title={t.birthdayTooltip}
+                  aria-haspopup="dialog"
+                  aria-expanded={birthdayMenuOpen}
+                  className={`flex items-center gap-1 sm:gap-1.5 border rounded-lg px-2 sm:px-2.5 py-1.5 shadow-lg transition ${
+                    upcoming.length > 0
+                      ? 'bg-pink-600/25 hover:bg-pink-600/35 border-pink-500/60 text-pink-100'
+                      : 'bg-gray-800/95 hover:bg-gray-700 border-gray-600 text-gray-400'
+                  }`}
+                >
+                  <span className="text-sm leading-none">🎂</span>
+                  <span className="text-xs font-semibold">{upcoming.length}</span>
+                </button>
+
+                {birthdayMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-20" onClick={() => setBirthdayMenuOpen(false)} />
+                    <div className="fixed sm:absolute top-[204px] sm:top-full left-0 right-0 mx-auto sm:left-auto sm:right-auto sm:mx-0 sm:mt-1 sm:start-0 sm:end-auto z-30 bg-gray-800 border border-gray-600 rounded-lg shadow-2xl overflow-hidden w-[270px] max-w-[calc(100vw-1.5rem)]">
+                      <div className="px-3 py-2 border-b border-gray-700 text-[11px] text-gray-400 font-medium">
+                        {t.birthdayTitle}
+                      </div>
+                      {upcoming.length === 0 ? (
+                        <div className="px-3 py-4 text-center text-xs text-gray-400">
+                          {t.birthdayNone}
+                        </div>
+                      ) : (
+                        <div className="max-h-[300px] overflow-y-auto">
+                          {upcoming.map((b) => (
+                            <div
+                              key={b.personId}
+                              className="px-3 py-2 border-b border-gray-700/50 last:border-0"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs text-gray-100 font-medium truncate">
+                                  {b.name}
+                                </span>
+                                <span
+                                  className={`text-[11px] shrink-0 ${
+                                    b.daysUntil <= 1 ? 'text-pink-300 font-semibold' : 'text-gray-400'
+                                  }`}
+                                >
+                                  {b.daysUntil === 0
+                                    ? t.birthdayToday
+                                    : b.daysUntil === 1
+                                      ? t.birthdayTomorrow
+                                      : t.birthdayInDays.replace('{n}', String(b.daysUntil))}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-2 mt-1">
+                                <span className="text-[10px] text-gray-500">
+                                  {formatBirthday(b.next)}
+                                  {b.turning
+                                    ? ' · ' + t.birthdayTurning.replace('{n}', String(b.turning))
+                                    : ''}
+                                </span>
+                                <a
+                                  href={whatsappGreeting(b.name, lang, b.turning)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[10px] bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-300 border border-emerald-600/40 rounded px-1.5 py-0.5 transition whitespace-nowrap"
+                                >
+                                  {t.birthdayGreet}
+                                </a>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
 
             {/* Floating Add Button */}
             <button
@@ -766,6 +1075,10 @@ export default function TreeEditorPage() {
                       setEditName2(d.person2?.name || '');
                       setEditGender1(d.person1?.gender || '');
                       setEditGender2(d.person2?.gender || '');
+                      setEditBirth(dateFromApi(d.person1?.birthDate, d.person1?.birthPrecision));
+                      setEditBirth2(dateFromApi(d.person2?.birthDate, d.person2?.birthPrecision));
+                      setEditDeath(dateFromApi(d.person1?.deathDate, d.person1?.deathPrecision));
+                      setEditDeath2(dateFromApi(d.person2?.deathDate, d.person2?.deathPrecision));
                       setEditIsCouple(true);
                     } else {
                       setEditIsCouple(false);
@@ -773,6 +1086,14 @@ export default function TreeEditorPage() {
                       setEditName2('');
                       setEditGender1((node.data as any).gender || '');
                       setEditGender2('');
+                      setEditBirth(
+                        dateFromApi((node.data as any).birthDate, (node.data as any).birthPrecision),
+                      );
+                      setEditDeath(
+                        dateFromApi((node.data as any).deathDate, (node.data as any).deathPrecision),
+                      );
+                      setEditBirth2(EMPTY_DATE);
+                      setEditDeath2(EMPTY_DATE);
                       setEditPerson1Id(Number(node.id));
                       setEditPerson2Id(0);
                     }
@@ -791,7 +1112,7 @@ export default function TreeEditorPage() {
             {/* Edit Name Modal */}
             {editingNode && !editIsCouple && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 sm:p-6 w-[90vw] sm:w-80">
+                <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 sm:p-6 w-[90vw] sm:w-96 max-h-[90vh] overflow-y-auto">
                   <h3 className="text-white font-semibold mb-4">{t.edit}</h3>
                   <input
                     type="text"
@@ -836,6 +1157,10 @@ export default function TreeEditorPage() {
                     <span className="text-xs">{t.uploadPhoto}</span>
                     <span className="text-gray-600 text-[10px] ml-auto">{t.maxFileSize}</span>
                   </div>
+
+                  <DateField kind="birth" value={editBirth} onChange={setEditBirth} />
+                  <DateField kind="death" value={editDeath} onChange={setEditDeath} />
+
                   <div className="flex gap-2 justify-end">
                     <button onClick={() => setEditingNode(null)}
                       className="px-4 py-1.5 text-sm text-gray-400 hover:text-white transition">{t.cancel}</button>
@@ -849,7 +1174,7 @@ export default function TreeEditorPage() {
             {/* Edit Couple Modal */}
             {editingNode && editIsCouple && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 sm:p-6 w-[90vw] sm:w-96 shadow-2xl">
+                <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 sm:p-6 w-[90vw] sm:w-96 shadow-2xl max-h-[90vh] overflow-y-auto">
                   <h3 className="text-white font-semibold mb-1 text-center">{t.editCouple}</h3>
                   <p className="text-gray-400 text-xs text-center mb-4">{t.editCoupleDesc}</p>
 
@@ -893,6 +1218,9 @@ export default function TreeEditorPage() {
                     </button>
                   </div>
 
+                  <DateField kind="birth" value={editBirth} onChange={setEditBirth} />
+                  <DateField kind="death" value={editDeath} onChange={setEditDeath} />
+
                   {/* Person 2 */}
                   <label className="text-gray-300 text-xs font-medium mb-1 block">
                     {editGender2 === 'male' ? t.husband : editGender2 === 'female' ? t.wife : t.person2}
@@ -933,6 +1261,9 @@ export default function TreeEditorPage() {
                     </button>
                   </div>
 
+                  <DateField kind="birth" value={editBirth2} onChange={setEditBirth2} />
+                  <DateField kind="death" value={editDeath2} onChange={setEditDeath2} />
+
                   <div className="flex gap-2 justify-end">
                     <button onClick={() => setEditingNode(null)}
                       className="px-4 py-1.5 text-sm text-gray-400 hover:text-white transition">{t.cancel}</button>
@@ -954,6 +1285,10 @@ export default function TreeEditorPage() {
           gender={formGender}
           onNameChange={setFormName}
           onGenderChange={setFormGender}
+          birth={formBirth}
+          onBirthChange={setFormBirth}
+          death={formDeath}
+          onDeathChange={setFormDeath}
           onConfirm={handleFormConfirm}
           onCancel={() => setFormModal(null)}
           confirmLabel={formModal.mode === 'addRelation' ? `${t.add} ${formModal.relationType}` : t.add}

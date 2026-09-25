@@ -49,8 +49,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem('token');
-    setToken(null);
-    setUser(null);
+    // Hard navigation, and deliberately the ONLY thing we do here. Resetting
+    // the auth state first would re-render, and the still-mounted protected
+    // route would redirect to /login — the visitor saw that login page flash
+    // before the reload. Clearing storage and leaving immediately lands on the
+    // public home page with no flicker (replace() also keeps the protected
+    // page out of the back button's history).
+    window.location.replace('/');
   };
 
   const refreshUser = async () => {
