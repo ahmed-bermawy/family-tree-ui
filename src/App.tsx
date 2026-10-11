@@ -11,6 +11,7 @@ import TreeEditorPage from './pages/TreeEditorPage';
 import ShareViewPage from './pages/ShareViewPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import AuthCallbackPage from './pages/AuthCallbackPage';
 import FeedbackPage from './pages/FeedbackPage';
 import FeaturesPage from './pages/FeaturesPage';
 import ProfilePage from './pages/ProfilePage';
@@ -48,6 +49,8 @@ export default function App() {
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+              {/* Google sends the browser back here with our JWT */}
+              <Route path="/auth/callback" element={<AuthCallbackPage />} />
               <Route path="/feedback" element={<FeedbackPage />} />
               {/* /features was folded into the home page — the server sends a
                   301, this covers in-app navigation */}

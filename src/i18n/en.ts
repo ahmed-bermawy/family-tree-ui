@@ -15,7 +15,12 @@ export const en = {
 
   // Navbar
   back: '← Back',
-  logout: 'Logout',
+  logout: 'Log out',
+  continueWithGoogle: 'Continue with Google',
+  orDivider: 'or',
+  googleSigningIn: 'Signing you in…',
+  googleFailed: "We couldn't complete the sign-in — please try again",
+  googleNoPassword: 'This account signs in with Google — use the Google button',
   profile: 'My profile',
   print: '🖨️ Print',
   share: '🔗 Share',

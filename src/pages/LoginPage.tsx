@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth, trees, persons, relationships } from '../api/endpoints';
 import { guestStore, importGuestTree } from '../utils/guestStore';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n/I18nContext';
+import { API_BASE } from '../api/client';
 import Footer from '../components/Footer';
 import { usePageMeta } from '../hooks/usePageMeta';
 
@@ -17,6 +18,16 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const { login } = useAuth();
   const { t, toggleLang } = useI18n();
+  // Ask the API whether Google is configured here. Any failure (including the
+  // endpoint not existing on an older API) simply keeps the button hidden.
+  const [googleAvailable, setGoogleAvailable] = useState(false);
+  useEffect(() => {
+    fetch(`${API_BASE}/auth/providers`)
+      .then((r) => (r.ok ? r.json() : { google: false }))
+      .then((d) => setGoogleAvailable(!!d.google))
+      .catch(() => setGoogleAvailable(false));
+  }, []);
+
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -100,7 +111,35 @@ export default function LoginPage() {
             </div>
           )}
 
-          <button
+                  {/* Google is the only external provider so far. The link is only
+            rendered when the API reports it is configured, so a deployment
+            without credentials never shows a button that cannot work. */}
+        {googleAvailable && (
+          <>
+            <div className="relative my-5">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-700" />
+              </div>
+              <div className="relative flex justify-center text-[11px]">
+                <span className="bg-gray-800 px-2 text-gray-500">{t.orDivider}</span>
+              </div>
+            </div>
+            <a
+              href={`${API_BASE}/auth/google`}
+              className="w-full flex items-center justify-center gap-2.5 py-2.5 bg-white hover:bg-gray-100 text-gray-800 text-sm font-medium rounded-lg transition"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 48 48" aria-hidden="true">
+                <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z" />
+                <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-2.8-.4-4.1H24v8.4h12.5c-.3 2.1-1.6 5.2-4.7 7.3l7.6 5.9c4.4-4.1 6.7-10.1 6.7-17.5z" />
+                <path fill="#FBBC05" d="M10.4 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.3.8-4.7l-7.8-6.1C1 16.3 0 20 0 24s1 7.7 2.6 10.8l7.8-6.1z" />
+                <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.6-5.9c-2 1.4-4.6 2.4-8.2 2.4-6.3 0-11.7-3.7-13.6-9l-7.8 6.1C6.5 42.6 14.6 48 24 48z" />
+              </svg>
+              {t.continueWithGoogle}
+            </a>
+          </>
+        )}
+
+        <button
             type="submit"
             className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition-all duration-200 shadow-lg hover:shadow-emerald-500/25"
           >

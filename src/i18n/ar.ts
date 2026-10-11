@@ -18,6 +18,11 @@ export const ar: Translations = {
   // Navbar
   back: '→ رجوع',
   logout: 'تسجيل خروج',
+  continueWithGoogle: 'المتابعة بحساب Google',
+  orDivider: 'أو',
+  googleSigningIn: 'بنكمّل تسجيل الدخول…',
+  googleFailed: 'معلش، مش قادرين نكمّل تسجيل الدخول — جرّب تاني',
+  googleNoPassword: 'الحساب ده بيتسجّل بحساب Google — استخدم زرار Google',
   profile: 'ملفي الشخصي',
   print: '🖨️ طباعة',
   share: '🔗 مشاركة',
